@@ -9,24 +9,46 @@ LH 외부 API에서 공공임대 공고를 수집하고, 공고에 첨부된 PDF
 
 ## 처리 흐름
 
+공고 1건당 **2개의 독립된 트랜잭션**으로 처리됩니다. 트랜잭션 사이 외부 API 호출(LH 상세 API, PDF 다운로드, OpenAI)이 수행되며, 각 트랜잭션은 실패해도 서로 영향을 주지 않습니다.
+
 ```
 [관리자 API / 스케줄러]
         ↓
 LH 목록 API 호출 (페이지 단위)
         ↓
-각 공고별 처리 (REQUIRES_NEW 트랜잭션)
+각 공고별 처리 (공고 1건 = TX1 + TX2)
         ↓
-  ┌─────────────────────────────┐
-  │ 1. Announcement upsert      │  ← LH 기본 공고 저장
-  │ 2. LH 상세 API 호출          │
-  │ 3. PDF URL 추출 (dsAhflInfo) │
-  │ 4. PDF 다운로드 → 텍스트 추출 │  ← PDFBox
-  │ 5. OpenAI GPT 파싱          │  ← gpt-4o-mini
-  │ 6. AnnouncementDetail 저장  │  ← raw 필드 포함
-  │ 7. AnnouncementParseRaw 저장│  ← API JSON, PDF AI JSON
-  │ 8. AnnouncementCategory 저장│  ← 키워드 기반 카테고리
-  └─────────────────────────────┘
+
+  ┌──────────────────────────────────────────────────┐
+  │ [TX1] @Transactional(REQUIRES_NEW)               │
+  │ NoticeImportPersistenceService.upsertLh()         │
+  │                                                  │
+  │   1. Announcement upsert                         │  ← sourcePrimary + sourceNoticeId로 중복 방지
+  │   (부수) AnnouncementParseRaw "LH_ITEM_JSON" 저장 │  ← REIMPORT 시 복원용
+  └──────────────────────────────────────────────────┘
+        ↓  TX1 커밋
+
+  (트랜잭션 밖 — 외부 작업)
+        ↓  2. LH 상세 API 호출
+        ↓  3. PDF URL 추출 (dsAhflInfo 배열에서 .pdf 확장자 필터)
+        ↓  4. PDF 다운로드 → PDFBox 텍스트 추출
+        ↓  5. OpenAI gpt-4o-mini 파싱
+
+  ┌──────────────────────────────────────────────────┐
+  │ [TX2] @Transactional(REQUIRES_NEW)               │
+  │ NoticeImportPersistenceService.upsertLhDetail()   │
+  │                                                  │
+  │   6. AnnouncementDetail 저장 (raw 필드 포함)      │
+  │      AnnouncementEligibility 저장 (자격조건 정형화) │
+  │   7. AnnouncementParseRaw 저장                   │  ← "API_JSON", "PDF_AI_JSON"
+  │   8. AnnouncementCategory 저장                   │  ← 키워드 기반 카테고리 감지
+  └──────────────────────────────────────────────────┘
+        ↓  TX2 커밋
 ```
+
+> **TX1 성공 + TX2 실패** → 공고(Announcement)는 DB에 남고, 상세/자격조건/카테고리만 미저장됩니다.
+> **OpenAI 실패** → TX2 내 raw 필드가 null로 저장되지만 공고 자체는 정상 저장됩니다.
+> **개별 공고 전체 실패** → 해당 공고만 `failed` 카운트, 나머지 공고 처리는 계속됩니다.
 
 ---
 
@@ -105,6 +127,35 @@ curl -X POST "/api/admin/import/lh?page=1&size=10" \
 
 제약: UNIQUE(announcement_id, category_code)
 
+#### announcement_eligibility (신규)
+
+OpenAI가 파싱한 자격조건을 정형화해서 저장. 관리자 검수 상태도 이 테이블이 관리함.
+
+| 컬럼명 | 타입 | Null | 설명 |
+|--------|------|------|------|
+| id | BIGINT | N | PK |
+| announcement_id | BIGINT | N | FK → announcement (UNIQUE) |
+| age_min / age_max | INT | Y | 자격 나이 범위 |
+| age_raw_text | TEXT | Y | 나이 관련 원문 |
+| marital_target_type | VARCHAR(20) | Y | SINGLE/MARRIED/NEWLYWED/ENGAGED/ANY |
+| marriage_year_limit | INT | Y | 혼인 n년 이내 |
+| marital_raw_text | TEXT | Y | 혼인 관련 원문 |
+| children_min_count | INT | Y | 최소 자녀 수 |
+| children_raw_text | TEXT | Y | 자녀 관련 원문 |
+| homeless_required | BOOLEAN | Y | 무주택 필수 여부 |
+| homeless_raw_text | TEXT | Y | 무주택 관련 원문 |
+| low_income_required | BOOLEAN | Y | 저소득 필수 여부 |
+| income_asset_criteria_raw | TEXT | Y | 소득/자산 기준 원문 |
+| elderly_required | BOOLEAN | Y | 고령자 필수 여부 |
+| elderly_age_min | INT | Y | 고령자 최소 나이 |
+| elderly_raw_text | TEXT | Y | 고령자 관련 원문 |
+| eligibility_raw | TEXT | Y | 신청자격 원문 전체 |
+| special_supply_raw | TEXT | Y | 특별공급 유형 원문 |
+| **review_status** | VARCHAR(20) | N | **PENDING/APPROVED/CORRECTED/REJECTED/RE_IMPORT** (기본값: PENDING) |
+| reviewed_by | VARCHAR(100) | Y | 검수한 관리자 loginId |
+| reviewed_at | DATETIME | Y | 검수 시각 |
+| review_note | TEXT | Y | 검수 의견 |
+
 #### announcement_parse_raw
 
 API 응답 및 AI 파싱 원본 데이터 보관.
@@ -113,9 +164,17 @@ API 응답 및 AI 파싱 원본 데이터 보관.
 |--------|------|------|------|
 | id | BIGINT | N | PK |
 | announcement_id | BIGINT | N | FK → announcement |
-| raw_type | VARCHAR(30) | N | API_JSON / PDF_AI_JSON |
+| raw_type | VARCHAR(30) | N | LH_ITEM_JSON / API_JSON / PDF_AI_JSON |
 | raw_text | LONGTEXT | N | 원본 JSON 문자열 |
 | collected_at | DATETIME | N | 수집 시각 |
+
+**raw_type 종류**
+
+| raw_type | 저장 시점 | 설명 |
+|----------|----------|------|
+| `LH_ITEM_JSON` | TX1 (`upsertLh`) | LH 목록 API 원본 JSON. **REIMPORT 시 파라미터 복원에 사용** |
+| `API_JSON` | TX2 (`upsertLhDetail`) | LH 상세 API 원본 JSON |
+| `PDF_AI_JSON` | TX2 (`upsertLhDetail`) | OpenAI GPT 파싱 결과 JSON |
 
 ---
 
@@ -207,16 +266,190 @@ announcement/domain/
 └── MatchSource.java
 announcement/repository/
 ├── AnnouncementCategoryRepository.java
-└── AnnouncementParseRawRepository.java
+├── AnnouncementParseRawRepository.java
+└── AnnouncementEligibilityRepository.java
+announcement/domain/
+├── AnnouncementEligibility.java    ← 자격조건 + 검수 상태 엔티티
+├── ParseReviewStatus.java          ← PENDING/APPROVED/CORRECTED/REJECTED/RE_IMPORT
+└── MaritalTargetType.java          ← SINGLE/MARRIED/NEWLYWED/ENGAGED/ANY
+admin/
+├── controller/AdminReviewController.java
+├── service/AdminReviewService.java
+└── dto/
+    ├── AdminReviewRequest.java
+    ├── AdminReviewListResponse.java
+    └── AdminReviewDetailResponse.java
 ```
 
 ---
 
 ## 향후 추가 예정
 
-- `announcement_eligibility` 테이블: AI 파싱 결과를 정형화한 자격조건 (나이 범위, 혼인 조건, 소득 기준 등)
 - MyHome API PDF 연동: 현재 웹페이지 URL만 제공, 크롤링 방식 검토 필요
 - 카카오톡 알림 연동: MessageSender 인터페이스 구현체 추가
+
+---
+
+## 관리자 검수 기능
+
+AI가 파싱한 데이터는 오류 가능성이 있으므로, 관리자가 직접 확인하고 승인/수정/폐기하거나 AI에게 재파싱을 요청할 수 있습니다.
+
+### 검수 상태 흐름 (ParseReviewStatus)
+
+```
+최초 파싱
+    ↓
+[PENDING]  ── APPROVE ──→  [APPROVED]   : AI 파싱 결과 그대로 확정
+    │
+    ├─ CORRECT ──────────→  [CORRECTED]  : 관리자가 직접 값을 수정하여 확정
+    │
+    ├─ REJECT ───────────→  [REJECTED]   : 공고 자체를 폐기 (추천 제외)
+    │
+    └─ REIMPORT ─────────→  [PENDING]    : LH API + PDF 재수집 후 검수 초기화
+                               ↑
+                         재파싱 완료 후 다시 검수 대기
+```
+
+### API 엔드포인트
+
+**권한**: 모든 `/api/admin/**` 경로는 ADMIN 롤 필수.
+
+#### GET /api/admin/review — 검수 목록 조회
+
+| 파라미터 | 타입 | 기본값 | 설명 |
+|---------|------|--------|------|
+| status | String | PENDING | PENDING / APPROVED / CORRECTED / REJECTED |
+| page | int | 0 | 페이지 번호 |
+| size | int | 20 | 페이지 크기 |
+
+**응답 (페이지)**
+```json
+{
+  "content": [
+    {
+      "announcementId": 4,
+      "noticeName": "[인천광역시] 기존주택등 매입임대주택(고령자유형) ...",
+      "regionLevel1": "인천광역시",
+      "reviewStatus": "PENDING",
+      "reviewedAt": null,
+      "reviewedBy": null
+    }
+  ],
+  "totalElements": 3
+}
+```
+
+#### GET /api/admin/review/{announcementId} — 검수 상세 조회
+
+AI가 파싱한 정형화 값과 PDF 원문을 함께 반환하여 비교할 수 있습니다.
+
+**응답 주요 필드**
+```json
+{
+  "announcementId": 4,
+  "noticeName": "공고명",
+  "depositAmount": 450,
+  "monthlyRentAmount": null,
+  "supplyHouseholdCount": 100,
+  "ageMin": 65, "ageMax": null,
+  "maritalTargetType": "ANY",
+  "homelessRequired": true,
+  "elderlyRequired": true, "elderlyAgeMin": 65,
+  "lowIncomeRequired": false,
+
+  "depositMonthlyRentRaw": "보증금 4500만원 ...",
+  "supplyHouseholdCountRaw": "총 100호",
+  "ageRawText": "만 65세 이상",
+  "eligibilityRaw": "신청자격 원문 ...",
+  "incomeAssetCriteriaRaw": "소득기준 ...",
+
+  "reviewStatus": "PENDING",
+  "reviewedBy": null,
+  "reviewedAt": null,
+  "reviewNote": null
+}
+```
+
+#### POST /api/admin/review/{announcementId} — 검수 처리
+
+**요청 바디**
+```json
+{
+  "action": "APPROVE | CORRECT | REJECT | REIMPORT",
+  "note": "검수 의견 (선택)",
+  "corrections": {
+    "depositAmount": 4500,
+    "monthlyRentAmount": null,
+    "supplyHouseholdCount": 100,
+    "ageMin": 65,
+    "ageMax": null,
+    "maritalTargetType": "ANY",
+    "marriageYearLimit": null,
+    "childrenMinCount": null,
+    "homelessRequired": true,
+    "lowIncomeRequired": false,
+    "elderlyRequired": true,
+    "elderlyAgeMin": 65
+  }
+}
+```
+
+> `corrections`는 `action: CORRECT` 일 때만 사용. 나머지 액션에서는 생략 가능.
+
+### 4가지 액션 상세
+
+| action | 동작 | 상태 변화 | corrections 필요 |
+|--------|------|----------|-----------------|
+| **APPROVE** | AI 파싱 결과를 그대로 확정 | PENDING → APPROVED | 불필요 |
+| **CORRECT** | 관리자가 수정한 값으로 저장 후 확정 | PENDING → CORRECTED | 필요 |
+| **REJECT** | 해당 공고를 폐기 처리 (추천/목록에서 제외 예정) | PENDING → REJECTED | 불필요 |
+| **REIMPORT** | LH API + PDF 재수집 후 AI 재파싱, 검수 초기화 | 현재 상태 → PENDING | 불필요 |
+
+### CORRECT로 수정 가능한 필드
+
+**Announcement (공고 기본정보)**
+- `depositAmount` — 보증금 (단위: 만원)
+- `monthlyRentAmount` — 월세 (단위: 만원)
+- `supplyHouseholdCount` — 공급호수
+
+**AnnouncementEligibility (자격조건)**
+- `ageMin`, `ageMax` — 자격 나이 범위
+- `maritalTargetType` — 혼인 조건 (SINGLE/MARRIED/NEWLYWED/ENGAGED/ANY)
+- `marriageYearLimit` — 혼인 n년 이내
+- `childrenMinCount` — 최소 자녀 수
+- `homelessRequired` — 무주택 필수 여부
+- `lowIncomeRequired` — 저소득 필수 여부
+- `elderlyRequired`, `elderlyAgeMin` — 고령자 조건
+
+### REIMPORT 동작 원리
+
+```
+1. announcement_parse_raw에서 "LH_ITEM_JSON" 복원
+   ↓
+2. LH 상세 API 재호출
+   ↓
+3. PDF URL 재추출 → PDF 재다운로드 → OpenAI 재파싱
+   ↓
+4. AnnouncementDetail + AnnouncementEligibility 덮어쓰기 (upsertLhDetail)
+   ↓
+5. review_status = PENDING, reviewedBy/At/Note = null 초기화
+```
+
+> ⚠️ REIMPORT는 `LH_ITEM_JSON` raw가 저장된 공고에서만 가능. 이 기능 도입 이전에 수집된 공고는 REIMPORT 불가.
+> ⚠️ REIMPORT 후 AI 재파싱 값으로 덮어쓰여지므로 depositAmount 등이 변경될 수 있음. 변경 후 다시 CORRECT/APPROVE로 처리.
+
+### 관련 파일
+
+| 역할 | 파일 |
+|------|------|
+| API 엔드포인트 | `admin/controller/AdminReviewController.java` |
+| 검수 비즈니스 로직 | `admin/service/AdminReviewService.java` |
+| 검수 액션 메서드 (엔티티) | `announcement/domain/AnnouncementEligibility.java` |
+| 검수 상태 enum | `announcement/domain/ParseReviewStatus.java` |
+| REIMPORT 오케스트레이션 | `external/service/NoticeImportOrchestrator.java` |
+| 요청 DTO | `admin/dto/AdminReviewRequest.java` |
+| 목록 응답 DTO | `admin/dto/AdminReviewListResponse.java` |
+| 상세 응답 DTO | `admin/dto/AdminReviewDetailResponse.java` |
 
 ---
 
