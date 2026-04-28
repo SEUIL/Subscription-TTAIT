@@ -10,10 +10,10 @@ import lombok.Getter;
 public abstract class SoftDeleteBaseEntity extends BaseTimeEntity {
 
     @Column(name = "deleted", nullable = false)
-    private boolean deleted = false;
+    private boolean deleted = false; // 삭제 여부 (소프트 삭제)
 
     @Column(name = "deleted_at")
-    private LocalDateTime deletedAt;
+    private LocalDateTime deletedAt; // 삭제 처리 시각
 
     public void softDelete() {
         this.deleted = true;

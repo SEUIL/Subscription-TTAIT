@@ -29,4 +29,14 @@ public class GlobalExceptionHandler {
                         "timestamp", LocalDateTime.now().toString(),
                         "message", message));
     }
+
+    // 미처리 예외 catch-all — 403 대신 실제 에러 메시지를 반환하기 위해 추가
+    // (STATELESS 환경에서 미처리 예외가 /error로 포워딩되면 Spring Security가 403을 반환하는 문제 방지)
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<?> handleUnexpected(Exception e) {
+        return ResponseEntity.internalServerError()
+                .body(Map.of(
+                        "timestamp", LocalDateTime.now().toString(),
+                        "message", "서버 내부 오류: " + e.getMessage()));
+    }
 }

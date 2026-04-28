@@ -38,7 +38,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     claims.get("userId", Long.class),
                     claims.get("loginId", String.class)
             );
-            List<GrantedAuthority> authorities = resolveAuthorities(principal.loginId());
+            List<GrantedAuthority> authorities = resolveAuthorities(claims);
             UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
                     principal,
                     null,
@@ -50,8 +50,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         filterChain.doFilter(request, response);
     }
 
-    private List<GrantedAuthority> resolveAuthorities(String loginId) {
-        if ("admin".equalsIgnoreCase(loginId)) {
+    private List<GrantedAuthority> resolveAuthorities(Claims claims) {
+        String role = claims.get("role", String.class);
+        if ("ADMIN".equals(role)) {
             return List.of(
                     new SimpleGrantedAuthority("ROLE_ADMIN"),
                     new SimpleGrantedAuthority("ROLE_USER")

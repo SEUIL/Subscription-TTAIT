@@ -35,4 +35,6 @@ public interface AnnouncementRepository extends JpaRepository<Announcement, Long
 
     @Query("select distinct a.providerName from Announcement a where a.deleted = false and a.merged = false and a.providerName is not null and a.providerName <> '' order by a.providerName")
     List<String> findDistinctProviders();
+
+    long countByDeletedFalseAndMergedFalse();
 }

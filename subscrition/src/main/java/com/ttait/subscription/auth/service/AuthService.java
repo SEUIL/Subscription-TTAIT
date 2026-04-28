@@ -6,6 +6,7 @@ import com.ttait.subscription.auth.dto.SignupRequest;
 import com.ttait.subscription.auth.jwt.JwtTokenProvider;
 import com.ttait.subscription.common.exception.ApiException;
 import com.ttait.subscription.user.domain.User;
+import com.ttait.subscription.user.domain.enums.Role;
 import com.ttait.subscription.user.domain.enums.UserStatus;
 import com.ttait.subscription.user.repository.UserRepository;
 import org.springframework.http.HttpStatus;
@@ -40,8 +41,9 @@ public class AuthService {
                 .phone(request.phone())
                 .email(request.email())
                 .status(UserStatus.ACTIVE)
+                .role(Role.USER)
                 .build());
-        String token = jwtTokenProvider.generateToken(user.getId(), user.getLoginId());
+        String token = jwtTokenProvider.generateToken(user.getId(), user.getLoginId(), user.getRole());
         return new AuthResponse(user.getId(), user.getLoginId(), token);
     }
 
@@ -52,7 +54,7 @@ public class AuthService {
         if (!passwordEncoder.matches(request.password(), user.getPasswordHash())) {
             throw new ApiException(HttpStatus.UNAUTHORIZED, "invalid credentials");
         }
-        String token = jwtTokenProvider.generateToken(user.getId(), user.getLoginId());
+        String token = jwtTokenProvider.generateToken(user.getId(), user.getLoginId(), user.getRole());
         return new AuthResponse(user.getId(), user.getLoginId(), token);
     }
 }

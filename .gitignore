@@ -23,3 +23,5 @@ Desktop.ini
 **/replay_pid*
 demo/demo/src/main/resources/application.properties
 demo/demo 백업.zip
+CLAUDE.md
+.claude/settings.local.json

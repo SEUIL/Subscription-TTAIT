@@ -1,5 +1,6 @@
 package com.ttait.subscription.auth.jwt;
 
+import com.ttait.subscription.user.domain.enums.Role;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
@@ -21,13 +22,14 @@ public class JwtTokenProvider {
         this.secretKey = Keys.hmacShaKeyFor(properties.secret().getBytes(StandardCharsets.UTF_8));
     }
 
-    public String generateToken(Long userId, String loginId) {
+    public String generateToken(Long userId, String loginId, Role role) {
         Instant now = Instant.now();
         Instant expiry = now.plus(properties.expirationHours(), ChronoUnit.HOURS);
         return Jwts.builder()
                 .subject(loginId)
                 .claim("userId", userId)
                 .claim("loginId", loginId)
+                .claim("role", role != null ? role.name() : Role.USER.name())
                 .issuedAt(Date.from(now))
                 .expiration(Date.from(expiry))
                 .signWith(secretKey)
