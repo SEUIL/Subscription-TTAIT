@@ -23,20 +23,20 @@ public class AnnouncementParseRaw {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    private Long id; // PK (자동 증가)
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "announcement_id", nullable = false)
-    private Announcement announcement;
+    private Announcement announcement; // 연관 공고
 
     @Column(name = "raw_type", nullable = false, length = 30)
-    private String rawType;
+    private String rawType; // 원본 데이터 유형 (예: LH_ITEM_JSON, PDF_TEXT, AI_PARSE_RESULT)
 
     @Column(name = "raw_text", nullable = false, columnDefinition = "LONGTEXT")
-    private String rawText;
+    private String rawText; // 원본 데이터 전문 (JSON 또는 텍스트)
 
     @Column(name = "collected_at", nullable = false)
-    private LocalDateTime collectedAt;
+    private LocalDateTime collectedAt; // 데이터 수집 시각
 
     @Builder
     public AnnouncementParseRaw(Announcement announcement, String rawType, String rawText, LocalDateTime collectedAt) {

@@ -27,25 +27,25 @@ public class AnnouncementCategory {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    private Long id; // PK (자동 증가)
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "announcement_id", nullable = false)
-    private Announcement announcement;
+    private Announcement announcement; // 연관 공고
 
     @Enumerated(EnumType.STRING)
     @Column(name = "category_code", nullable = false, length = 20)
-    private CategoryCode categoryCode;
+    private CategoryCode categoryCode; // 수혜 대상 카테고리 (청년, 신혼부부 등)
 
     @Enumerated(EnumType.STRING)
     @Column(name = "match_source", nullable = false, length = 10)
-    private MatchSource matchSource;
+    private MatchSource matchSource; // 카테고리 매칭 방식 (규칙/AI/수동)
 
     @Column(name = "match_reason", columnDefinition = "TEXT")
-    private String matchReason;
+    private String matchReason; // 카테고리 매칭 사유
 
     @Column(name = "score")
-    private Integer score;
+    private Integer score; // 매칭 점수
 
     @Builder
     public AnnouncementCategory(Announcement announcement, CategoryCode categoryCode,

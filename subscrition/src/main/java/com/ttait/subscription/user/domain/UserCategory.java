@@ -26,15 +26,15 @@ public class UserCategory extends BaseTimeEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    private Long id; // PK (자동 증가)
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
-    private User user;
+    private User user; // 연관 사용자
 
     @Enumerated(EnumType.STRING)
     @Column(name = "category_code", nullable = false, length = 30)
-    private CategoryCode categoryCode;
+    private CategoryCode categoryCode; // 해당하는 수혜 대상 카테고리
 
     @Builder
     public UserCategory(User user, CategoryCode categoryCode) {
