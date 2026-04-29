@@ -33,3 +33,4 @@ CLAUDE.md
 # Local runtime logs
 subscrition/backend.err.log
 subscrition/backend.out.log
+frontend/.env.example
