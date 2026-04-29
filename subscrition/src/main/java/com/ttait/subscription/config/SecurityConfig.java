@@ -12,6 +12,9 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 @Configuration
 @EnableConfigurationProperties(JwtProperties.class)
@@ -25,6 +28,7 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable())
                 // JWT 기반 무상태 인증 — 서버가 세션을 유지하지 않음
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .authorizeHttpRequests(auth -> auth
                         // 로그인·회원가입은 인증 없이 접근 가능
                         .requestMatchers("/api/auth/**").permitAll()
@@ -38,6 +42,8 @@ public class SecurityConfig {
                         // 공고 목록/상세 조회는 비로그인 사용자도 가능 (GET만 허용)
                         .requestMatchers(HttpMethod.GET, "/api/announcements/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/filters/**").permitAll()
+                        // CORS 프리플라이트 요청 허용
+                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         // 관리자 전용 API — ADMIN 권한 없으면 403 반환
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         // 나머지 모든 요청은 로그인 필수
@@ -45,6 +51,20 @@ public class SecurityConfig {
                 // JWT 검증 필터를 Spring Security 기본 인증 필터 앞에 배치
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
         return http.build();
+    }
+
+    @Bean
+    public CorsConfigurationSource corsConfigurationSource() {
+        CorsConfiguration config = new CorsConfiguration();
+        config.setAllowedOrigins(java.util.List.of("http://localhost:5173"));
+        config.setAllowedMethods(java.util.List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
+        config.setAllowedHeaders(java.util.List.of("*"));
+        config.setAllowCredentials(true);
+        config.setMaxAge(3600L);
+
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", config);
+        return source;
     }
 
     @Bean
