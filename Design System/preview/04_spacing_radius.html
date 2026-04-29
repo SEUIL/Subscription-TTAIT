@@ -1,0 +1,79 @@
+<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;600;700&display=swap');
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:'Noto Sans KR',sans-serif;background:#fff;padding:20px;display:flex;flex-direction:column;gap:20px}
+  .section-label{font-size:11px;font-weight:700;color:#6a6a6a;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px}
+  .row{display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end}
+  .radius-box{display:flex;flex-direction:column;align-items:center;gap:6px}
+  .box{background:#f2f2f2;border:1.5px solid #c1c1c1;width:56px;height:40px}
+  .rlabel{font-size:10px;color:#6a6a6a;text-align:center}
+  .rval{font-size:10px;color:#222;font-family:monospace;text-align:center;font-weight:700}
+  .spacing-row{display:flex;align-items:center;gap:12px}
+  .space-bar{height:20px;background:#ff385c;border-radius:2px;opacity:0.7}
+  .space-label{font-size:11px;color:#222;font-family:monospace;font-weight:700;min-width:80px}
+  .space-name{font-size:11px;color:#6a6a6a}
+</style></head><body>
+
+<div>
+  <div class="section-label">Border Radius Scale</div>
+  <div class="row">
+    <div class="radius-box">
+      <div class="box" style="border-radius:4px"></div>
+      <div class="rval">4px</div>
+      <div class="rlabel">--radius-xs</div>
+    </div>
+    <div class="radius-box">
+      <div class="box" style="border-radius:8px"></div>
+      <div class="rval">8px</div>
+      <div class="rlabel">--radius-sm</div>
+    </div>
+    <div class="radius-box">
+      <div class="box" style="border-radius:12px"></div>
+      <div class="rval">12px</div>
+      <div class="rlabel">--radius-md</div>
+    </div>
+    <div class="radius-box">
+      <div class="box" style="border-radius:14px"></div>
+      <div class="rval">14px</div>
+      <div class="rlabel">--radius-lg</div>
+    </div>
+    <div class="radius-box">
+      <div class="box" style="border-radius:20px"></div>
+      <div class="rval">20px</div>
+      <div class="rlabel">--radius-xl</div>
+    </div>
+    <div class="radius-box">
+      <div class="box" style="border-radius:32px"></div>
+      <div class="rval">32px</div>
+      <div class="rlabel">--radius-2xl</div>
+    </div>
+    <div class="radius-box">
+      <div class="box" style="border-radius:40px;width:80px"></div>
+      <div class="rval">40px</div>
+      <div class="rlabel">--radius-pill</div>
+    </div>
+    <div class="radius-box">
+      <div class="box" style="border-radius:50%;width:40px;height:40px"></div>
+      <div class="rval">50%</div>
+      <div class="rlabel">--radius-circle</div>
+    </div>
+  </div>
+</div>
+
+<div>
+  <div class="section-label">Spacing Scale (8px base)</div>
+  <div style="display:flex;flex-direction:column;gap:6px">
+    <div class="spacing-row"><div class="space-label">--space-1 · 4px</div><div class="space-bar" style="width:4px"></div><div class="space-name">Micro gaps</div></div>
+    <div class="spacing-row"><div class="space-label">--space-2 · 8px</div><div class="space-bar" style="width:8px"></div><div class="space-name">Tag gaps, icon gaps</div></div>
+    <div class="spacing-row"><div class="space-label">--space-3 · 12px</div><div class="space-bar" style="width:12px"></div><div class="space-name">Card inner gap</div></div>
+    <div class="spacing-row"><div class="space-label">--space-4 · 16px</div><div class="space-bar" style="width:16px"></div><div class="space-name">Header gap, button gap</div></div>
+    <div class="spacing-row"><div class="space-label">--space-5 · 20px</div><div class="space-bar" style="width:20px"></div><div class="space-name">Section inner padding</div></div>
+    <div class="spacing-row"><div class="space-label">--space-6 · 24px</div><div class="space-bar" style="width:24px"></div><div class="space-name">Page horizontal padding</div></div>
+    <div class="spacing-row"><div class="space-label">--space-8 · 32px</div><div class="space-bar" style="width:32px"></div><div class="space-name">Section gap</div></div>
+    <div class="spacing-row"><div class="space-label">--space-10 · 40px</div><div class="space-bar" style="width:40px"></div><div class="space-name">Detail section gap</div></div>
+    <div class="spacing-row"><div class="space-label">--space-16 · 64px</div><div class="space-bar" style="width:64px"></div><div class="space-name">Column gap</div></div>
+  </div>
+</div>
+
+</body></html>

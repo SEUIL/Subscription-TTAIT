@@ -1,0 +1,48 @@
+<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;600;700&display=swap');
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:'Noto Sans KR',sans-serif;background:#f2f2f2;padding:24px;display:flex;gap:20px;flex-wrap:wrap;align-items:flex-start}
+  .card{background:#fff;border-radius:20px;padding:20px;display:flex;flex-direction:column;align-items:center;gap:12px;min-width:160px}
+  .swatch{width:120px;height:64px;border-radius:12px;background:#fff}
+  .name{font-size:12px;font-weight:700;color:#222;text-align:center}
+  .desc{font-size:11px;color:#6a6a6a;text-align:center;line-height:1.5}
+  .level{font-size:10px;font-weight:700;color:#ff385c;text-align:center;background:#fff0f3;padding:2px 8px;border-radius:10px}
+</style></head><body>
+
+<div class="card">
+  <div class="swatch" style="background:#fff;border:1px solid #e8e8e8"></div>
+  <div class="level">Level 0 — Flat</div>
+  <div class="name">No Shadow</div>
+  <div class="desc">Page background<br>Text blocks</div>
+</div>
+
+<div class="card">
+  <div class="swatch" style="box-shadow:rgba(0,0,0,0.02) 0px 0px 0px 1px, rgba(0,0,0,0.04) 0px 2px 6px, rgba(0,0,0,0.1) 0px 4px 8px"></div>
+  <div class="level">Level 1 — Card</div>
+  <div class="name">--shadow-card</div>
+  <div class="desc">Listing cards<br>Sticky sidebar<br>Section cards</div>
+</div>
+
+<div class="card">
+  <div class="swatch" style="box-shadow:rgba(0,0,0,0.08) 0px 4px 12px"></div>
+  <div class="level">Level 2 — Hover</div>
+  <div class="name">--shadow-hover</div>
+  <div class="desc">Button hover<br>Card hover lift<br>Icon button hover</div>
+</div>
+
+<div class="card">
+  <div class="swatch" style="box-shadow:0 0 0 3px rgba(34,34,34,0.08)"></div>
+  <div class="level">Level 3 — Focus</div>
+  <div class="name">--shadow-focus</div>
+  <div class="desc">Input focus ring<br>3px offset, gray</div>
+</div>
+
+<div class="card">
+  <div class="swatch" style="box-shadow:0 0 0 3px rgba(255,56,92,0.12)"></div>
+  <div class="level">Level 3 — Focus Red</div>
+  <div class="name">--shadow-focus-red</div>
+  <div class="desc">Error input focus<br>3px offset, red</div>
+</div>
+
+</body></html>

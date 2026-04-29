@@ -1,0 +1,114 @@
+<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8">
+<style>
+  @font-face {
+  font-family: 'Noto Sans KR';
+  src: url('../fonts/NotoSansKR-VariableFont_wght.ttf') format('truetype');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:'Noto Sans KR',sans-serif;background:#fff;padding:24px;display:flex;flex-direction:column;gap:20px}
+  .label{font-size:11px;font-weight:700;color:#6a6a6a;text-transform:uppercase;letter-spacing:0.4px;margin-bottom:10px}
+  .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+
+  /* Status badges on images */
+  .badge{padding:4px 10px;border-radius:6px;font-size:11px;font-weight:600}
+
+  /* Announcement tags */
+  .tag{padding:5px 12px;border-radius:6px;font-size:12px;font-weight:600}
+  .tag-open{background:#fff0f3;color:#ff385c;border:1px solid rgba(255,56,92,0.2)}
+  .tag-type{background:#f2f2f2;color:#222}
+  .tag-blue{background:#eff6ff;color:#1d4ed8;border:1px solid rgba(29,78,216,0.15)}
+  .tag-purple{background:#fdf4ff;color:#7e22ce;border:1px solid rgba(126,34,206,0.2)}
+  .tag-green{background:#f0fdf4;color:#166534;border:1px solid rgba(22,101,52,0.2)}
+  .tag-orange{background:#fff7ed;color:#c2410c;border:1px solid rgba(194,65,12,0.2)}
+
+  /* Category chips (My Page / Signup) */
+  .chip-grid{display:grid;grid-template-columns:repeat(6,auto);gap:8px}
+  .chip{padding:8px 16px;border-radius:20px;border:1.5px solid #c1c1c1;
+    font-family:'Noto Sans KR',sans-serif;font-size:13px;font-weight:600;
+    color:#6a6a6a;background:#fff;cursor:pointer;transition:all 0.15s;
+    display:flex;align-items:center;gap:6px}
+  .chip:hover{border-color:#222;color:#222}
+  .chip.selected{border-color:#ff385c;background:#fff0f3;color:#ff385c}
+  .chip span{font-size:16px}
+
+  /* Filter tags */
+  .filter-tag{display:flex;align-items:center;gap:8px;padding:8px 16px;
+    border:1px solid #c1c1c1;border-radius:8px;font-size:13px;font-weight:500;
+    color:#222;background:#fff;cursor:pointer;transition:box-shadow 0.15s,border-color 0.15s}
+  .filter-tag:hover{box-shadow:rgba(0,0,0,0.08) 0px 4px 12px;border-color:#222}
+  .filter-tag.active{background:#222;color:#fff;border-color:#222}
+  .filter-tag.active-red{color:#ff385c;border-color:#ff385c}
+
+  /* Notification badge */
+  .notif-count{background:#ff385c;color:#fff;font-size:10px;font-weight:700;
+    padding:2px 6px;border-radius:10px;margin-left:auto}
+</style></head><body>
+
+<div>
+  <div class="label">Status Badges (on image)</div>
+  <div class="row">
+    <span class="badge" style="background:rgba(34,34,34,0.75);color:#fff">모집중</span>
+    <span class="badge" style="background:rgba(255,56,92,0.9);color:#fff">마감임박</span>
+    <span class="badge" style="background:rgba(106,106,106,0.75);color:#fff">마감</span>
+  </div>
+</div>
+
+<div>
+  <div class="label">Detail Page Tags</div>
+  <div class="row">
+    <span class="tag tag-open">모집중</span>
+    <span class="tag tag-type">국민임대</span>
+    <span class="tag tag-type">아파트</span>
+    <span class="tag tag-blue">청년</span>
+    <span class="tag tag-purple">신혼부부</span>
+    <span class="tag tag-green">저소득</span>
+    <span class="tag tag-orange">고령자</span>
+  </div>
+</div>
+
+<div>
+  <div class="label">Filter Tags</div>
+  <div class="row">
+    <button class="filter-tag active">경기도 · 오산시</button>
+    <button class="filter-tag">모집중</button>
+    <button class="filter-tag">필터</button>
+    <button class="filter-tag active-red" style="color:#ff385c;border-color:#ff385c">추천순</button>
+    <button class="filter-tag">마감순</button>
+    <button class="filter-tag">최신순</button>
+  </div>
+</div>
+
+<div>
+  <div class="label">Category Chips — My Page / Signup</div>
+  <div class="chip-grid">
+    <button class="chip selected" onclick="this.classList.toggle('selected')"><span>👤</span> 청년</button>
+    <button class="chip" onclick="this.classList.toggle('selected')"><span>💑</span> 신혼부부</button>
+    <button class="chip selected" onclick="this.classList.toggle('selected')"><span>🏠</span> 무주택자</button>
+    <button class="chip" onclick="this.classList.toggle('selected')"><span>👴</span> 고령자</button>
+    <button class="chip" onclick="this.classList.toggle('selected')"><span>💰</span> 저소득층</button>
+    <button class="chip" onclick="this.classList.toggle('selected')"><span>👨‍👩‍👧‍👦</span> 다자녀</button>
+  </div>
+</div>
+
+<div>
+  <div class="label">Notification Dot + Count Badge</div>
+  <div class="row" style="align-items:center;gap:16px">
+    <div style="position:relative;display:inline-block">
+      <div style="width:42px;height:42px;border-radius:50%;background:#f2f2f2;display:flex;align-items:center;justify-content:center">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#222" stroke-width="2" width="18" height="18"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+      </div>
+      <div style="position:absolute;top:2px;right:2px;width:8px;height:8px;border-radius:50%;background:#ff385c;border:2px solid #fff"></div>
+    </div>
+    <div style="display:flex;align-items:center;gap:6px;padding:8px 14px;border-radius:8px;background:#f2f2f2;font-size:14px;font-weight:500;color:#222">
+      알림
+      <span class="notif-count">1</span>
+    </div>
+    <div style="background:#ff385c;color:#fff;font-size:11px;font-weight:700;padding:4px 10px;border-radius:20px">2개</div>
+    <div style="background:#fff0f3;color:#ff385c;font-size:11px;font-weight:700;padding:4px 10px;border-radius:20px">추천 정확도에 영향</div>
+  </div>
+</div>
+
+</body></html>

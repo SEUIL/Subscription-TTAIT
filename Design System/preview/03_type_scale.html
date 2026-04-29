@@ -1,0 +1,84 @@
+<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8">
+<style>
+@font-face {
+  font-family: 'Noto Sans KR';
+  src: url('../fonts/NotoSansKR-VariableFont_wght.ttf') format('truetype');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Noto Sans KR',sans-serif;background:#fff;padding:20px;display:flex;flex-direction:column;gap:14px}
+.row{display:flex;align-items:baseline;gap:16px;border-bottom:1px solid #f2f2f2;padding-bottom:12px}
+.meta{min-width:140px;flex-shrink:0}
+.meta-name{font-size:11px;font-weight:700;color:#222;margin-bottom:1px}
+.meta-val{font-size:10px;color:#6a6a6a;font-family:monospace}
+.sample{color:#222}
+
+/* Variable font weight showcase */
+.vf-row{display:flex;gap:0;flex-direction:column;gap:4px;padding:12px 0;border-bottom:1px solid #f2f2f2}
+.vf-label{font-size:10px;color:#6a6a6a;font-family:monospace;margin-bottom:6px}
+.vf-samples{display:flex;gap:20px;align-items:baseline;flex-wrap:wrap}
+</style></head><body>
+
+<!-- Variable font weight strip -->
+<div class="vf-row">
+  <div class="vf-label">NotoSansKR-VariableFont · weight axis 400→700</div>
+  <div class="vf-samples">
+    <span style="font-size:18px;font-weight:400;color:#222">집구해 400</span>
+    <span style="font-size:18px;font-weight:500;color:#222">집구해 500</span>
+    <span style="font-size:18px;font-weight:600;color:#222">집구해 600</span>
+    <span style="font-size:18px;font-weight:700;color:#222">집구해 700</span>
+  </div>
+</div>
+
+<div class="row">
+  <div class="meta"><div class="meta-name">Display / 타이틀</div><div class="meta-val">26px · 700 · -0.4px</div></div>
+  <div class="sample" style="font-size:26px;font-weight:700;letter-spacing:-0.4px">오산세교2 21단지 국민임대주택</div>
+</div>
+<div class="row">
+  <div class="meta"><div class="meta-name">Heading / 섹션제목</div><div class="meta-val">20px · 700 · -0.3px</div></div>
+  <div class="sample" style="font-size:20px;font-weight:700;letter-spacing:-0.3px">공고 정보</div>
+</div>
+<div class="row">
+  <div class="meta"><div class="meta-name">Brand / 로고</div><div class="meta-val">20px · 700 · red</div></div>
+  <div class="sample" style="font-size:20px;font-weight:700;letter-spacing:-0.3px;color:#ff385c">집구해</div>
+</div>
+<div class="row">
+  <div class="meta"><div class="meta-name">Subheading</div><div class="meta-val">16px · 700</div></div>
+  <div class="sample" style="font-size:16px;font-weight:700">기본 정보</div>
+</div>
+<div class="row">
+  <div class="meta"><div class="meta-name">UI Medium</div><div class="meta-val">16px · 500</div></div>
+  <div class="sample" style="font-size:16px;font-weight:500">추천 공고</div>
+</div>
+<div class="row">
+  <div class="meta"><div class="meta-name">Button</div><div class="meta-val">16px · 600</div></div>
+  <div class="sample" style="font-size:16px;font-weight:600">신청하러 가기 →</div>
+</div>
+<div class="row">
+  <div class="meta"><div class="meta-name">Body / 카드제목</div><div class="meta-val">14px · 600 · -0.2px</div></div>
+  <div class="sample" style="font-size:14px;font-weight:600;letter-spacing:-0.2px">26년 2차 신혼·신생아Ⅰ 예비입주자 모집공고</div>
+</div>
+<div class="row">
+  <div class="meta"><div class="meta-name">Body Regular</div><div class="meta-val">14px · 400</div></div>
+  <div class="sample" style="font-size:14px;font-weight:400;color:#6a6a6a">보증금 1,119만원 / 월세 149,570원</div>
+</div>
+<div class="row">
+  <div class="meta"><div class="meta-name">Meta</div><div class="meta-val">13px · 400 · gray</div></div>
+  <div class="sample" style="font-size:13px;font-weight:400;color:#6a6a6a">LH · 경기도 오산시</div>
+</div>
+<div class="row">
+  <div class="meta"><div class="meta-name">Caption</div><div class="meta-val">12px · 600</div></div>
+  <div class="sample" style="font-size:12px;font-weight:600;color:#6a6a6a">마감 D-6 · 4월 14일</div>
+</div>
+<div class="row">
+  <div class="meta"><div class="meta-name">Urgent</div><div class="meta-val">12px · 600 · red</div></div>
+  <div class="sample" style="font-size:12px;font-weight:600;color:#ff385c">마감 D-1 · 오늘!</div>
+</div>
+<div class="row" style="border-bottom:none">
+  <div class="meta"><div class="meta-name">Micro</div><div class="meta-val">11px · 700</div></div>
+  <div class="sample" style="font-size:11px;font-weight:700;color:#6a6a6a">마감임박</div>
+</div>
+
+</body></html>

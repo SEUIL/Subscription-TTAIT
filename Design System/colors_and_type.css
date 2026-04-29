@@ -1,0 +1,255 @@
+/**
+ * 집구해 Design System — Tokens
+ * Font: Noto Sans KR (Google Fonts, weights 400/500/600/700)
+ * Inspired by Airbnb design system, adapted for Korean public housing
+ */
+
+@font-face {
+  font-family: 'Noto Sans KR';
+  src: url('fonts/NotoSansKR-VariableFont_wght.ttf') format('truetype');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* ─────────────────────────────────────────────
+   BASE PALETTE
+───────────────────────────────────────────── */
+:root {
+
+  /* Brand */
+  --rausch:           #ff385c;   /* Primary CTA, active states, urgency */
+  --rausch-dark:      #e00b41;   /* Hover/press variant */
+
+  /* Text */
+  --near-black:       #222222;   /* Primary text (warm, not pure black) */
+  --gray-secondary:   #6a6a6a;   /* Secondary text, metadata */
+  --gray-disabled:    rgba(0,0,0,0.24); /* Disabled states */
+
+  /* Surfaces */
+  --white:            #ffffff;   /* Card surfaces, main background */
+  --gray-surface:     #f2f2f2;   /* Page bg (My Page), icon bgs */
+  --gray-border:      #c1c1c1;   /* Input/divider borders */
+
+  /* Semantic tints (tag backgrounds) */
+  --tint-red:         #fff0f3;   /* Open/active tags, deadline box */
+  --tint-blue:        #eff6ff;   /* 청년 (Youth) */
+  --tint-purple:      #fdf4ff;   /* 신혼부부 (Newlywed) */
+  --tint-green:       #f0fdf4;   /* 저소득 (Low income) */
+  --tint-orange:      #fff7ed;   /* 고령자 (Elderly) */
+
+  /* Semantic text on tints */
+  --tag-red:          #ff385c;
+  --tag-blue:         #1d4ed8;
+  --tag-purple:       #7e22ce;
+  --tag-green:        #166534;
+  --tag-orange:       #c2410c;
+
+  /* Shadows */
+  --shadow-card:
+    rgba(0,0,0,0.02) 0px 0px 0px 1px,
+    rgba(0,0,0,0.04) 0px 2px 6px,
+    rgba(0,0,0,0.1)  0px 4px 8px;
+  --shadow-hover:     rgba(0,0,0,0.08) 0px 4px 12px;
+  --shadow-focus:     0 0 0 3px rgba(34,34,34,0.08);
+  --shadow-focus-red: 0 0 0 3px rgba(255,56,92,0.12);
+
+  /* ─────────────────────────────────────────
+     BORDER RADIUS SCALE
+  ───────────────────────────────────────── */
+  --radius-xs:      4px;    /* Small tag borders */
+  --radius-sm:      8px;    /* Buttons, filter tags, logo icon */
+  --radius-md:      12px;   /* Form inputs, inline boxes */
+  --radius-lg:      14px;   /* Status badges */
+  --radius-xl:      20px;   /* Listing cards, sticky cards, section cards */
+  --radius-2xl:     32px;   /* Large containers */
+  --radius-pill:    40px;   /* Search bar */
+  --radius-circle:  50%;    /* Circular buttons, avatar */
+
+  /* ─────────────────────────────────────────
+     SPACING SCALE (8px base)
+  ───────────────────────────────────────── */
+  --space-1:   4px;
+  --space-2:   8px;
+  --space-3:   12px;
+  --space-4:   16px;
+  --space-5:   20px;
+  --space-6:   24px;
+  --space-8:   32px;
+  --space-10:  40px;
+  --space-12:  48px;
+  --space-16:  64px;
+  --space-20:  80px;
+
+  /* ─────────────────────────────────────────
+     TYPOGRAPHY
+  ───────────────────────────────────────── */
+  --font:       'Noto Sans KR', -apple-system, system-ui, sans-serif;
+
+  /* Size tokens */
+  --text-xs:    11px;
+  --text-sm:    12px;
+  --text-base:  13px;
+  --text-md:    14px;
+  --text-lg:    15px;
+  --text-xl:    16px;
+  --text-2xl:   20px;
+  --text-3xl:   22px;
+  --text-4xl:   24px;
+  --text-5xl:   26px;
+  --text-6xl:   28px;
+
+  /* Weight tokens */
+  --weight-regular:   400;
+  --weight-medium:    500;
+  --weight-semibold:  600;
+  --weight-bold:      700;
+
+  /* Transitions */
+  --transition-fast:    0.15s ease;
+  --transition-normal:  0.2s ease;
+}
+
+/* ─────────────────────────────────────────────
+   SEMANTIC TYPE ROLES
+   Apply to elements: h1, h2, h3, .label, p, etc.
+───────────────────────────────────────────── */
+
+/* Page / detail title */
+.t-display {
+  font-family: var(--font);
+  font-size: var(--text-5xl);  /* 26px */
+  font-weight: var(--weight-bold);
+  color: var(--near-black);
+  line-height: 1.35;
+  letter-spacing: -0.4px;
+}
+
+/* Section heading (h2) */
+.t-heading {
+  font-family: var(--font);
+  font-size: var(--text-2xl);  /* 20px */
+  font-weight: var(--weight-bold);
+  color: var(--near-black);
+  letter-spacing: -0.3px;
+  line-height: 1.4;
+}
+
+/* Card / sub-heading */
+.t-subheading {
+  font-family: var(--font);
+  font-size: var(--text-xl);   /* 16px */
+  font-weight: var(--weight-bold);
+  color: var(--near-black);
+  letter-spacing: -0.2px;
+}
+
+/* Logo / brand name */
+.t-brand {
+  font-family: var(--font);
+  font-size: var(--text-2xl);  /* 20px */
+  font-weight: var(--weight-bold);
+  color: var(--rausch);
+  letter-spacing: -0.3px;
+}
+
+/* UI medium — nav, emphasis */
+.t-ui-md {
+  font-family: var(--font);
+  font-size: var(--text-xl);   /* 16px */
+  font-weight: var(--weight-medium);
+  color: var(--near-black);
+}
+
+/* Button label */
+.t-button {
+  font-family: var(--font);
+  font-size: var(--text-xl);   /* 16px */
+  font-weight: var(--weight-semibold);
+  color: var(--white);
+  letter-spacing: 0;
+}
+
+/* Body / card title */
+.t-body {
+  font-family: var(--font);
+  font-size: var(--text-md);   /* 14px */
+  font-weight: var(--weight-semibold);
+  color: var(--near-black);
+  line-height: 1.4;
+  letter-spacing: -0.2px;
+}
+
+/* Body regular */
+.t-body-regular {
+  font-family: var(--font);
+  font-size: var(--text-md);   /* 14px */
+  font-weight: var(--weight-regular);
+  color: var(--near-black);
+  line-height: 1.5;
+}
+
+/* Meta / secondary text */
+.t-meta {
+  font-family: var(--font);
+  font-size: var(--text-base); /* 13px */
+  font-weight: var(--weight-regular);
+  color: var(--gray-secondary);
+  line-height: 1.5;
+}
+
+/* Caption / tag */
+.t-caption {
+  font-family: var(--font);
+  font-size: var(--text-sm);   /* 12px */
+  font-weight: var(--weight-semibold);
+  color: var(--gray-secondary);
+}
+
+/* Micro */
+.t-micro {
+  font-family: var(--font);
+  font-size: var(--text-xs);   /* 11px */
+  font-weight: var(--weight-bold);
+  color: var(--gray-secondary);
+  letter-spacing: 0.3px;
+}
+
+/* Price / number emphasis */
+.t-price {
+  font-family: var(--font);
+  font-size: var(--text-5xl);  /* 26px */
+  font-weight: var(--weight-bold);
+  color: var(--near-black);
+  letter-spacing: -0.5px;
+}
+
+/* Urgency / deadline */
+.t-urgent {
+  font-family: var(--font);
+  font-size: var(--text-sm);   /* 12px */
+  font-weight: var(--weight-semibold);
+  color: var(--rausch);
+}
+
+/* ─────────────────────────────────────────────
+   UTILITY CLASSES
+───────────────────────────────────────────── */
+.color-primary   { color: var(--rausch); }
+.color-text      { color: var(--near-black); }
+.color-secondary { color: var(--gray-secondary); }
+.color-disabled  { color: var(--gray-disabled); }
+
+.bg-surface  { background: var(--gray-surface); }
+.bg-white    { background: var(--white); }
+.bg-primary  { background: var(--rausch); }
+.bg-dark     { background: var(--near-black); }
+
+.shadow-card  { box-shadow: var(--shadow-card); }
+.shadow-hover { box-shadow: var(--shadow-hover); }
+
+.radius-sm     { border-radius: var(--radius-sm); }
+.radius-md     { border-radius: var(--radius-md); }
+.radius-xl     { border-radius: var(--radius-xl); }
+.radius-pill   { border-radius: var(--radius-pill); }
+.radius-circle { border-radius: var(--radius-circle); }

@@ -1,0 +1,74 @@
+<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8">
+<style>
+  @font-face {
+  font-family: 'Noto Sans KR';
+  src: url('../fonts/NotoSansKR-VariableFont_wght.ttf') format('truetype');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:'Noto Sans KR',sans-serif;background:#fff;padding:24px;display:flex;flex-direction:column;gap:24px}
+  .label{font-size:11px;font-weight:700;color:#6a6a6a;text-transform:uppercase;letter-spacing:0.4px;margin-bottom:10px}
+
+  .pagination{display:flex;align-items:center;justify-content:center;gap:4px}
+  .page-btn{width:40px;height:40px;border-radius:50%;border:none;background:transparent;cursor:pointer;
+    font-family:'Noto Sans KR',sans-serif;font-size:14px;font-weight:500;color:#222;
+    display:flex;align-items:center;justify-content:center;transition:background 0.15s}
+  .page-btn:hover{background:#f2f2f2}
+  .page-btn.active{background:#222;color:#fff;font-weight:700}
+  .page-btn.nav{font-size:18px;color:#222}
+  .page-btn:disabled{color:#c1c1c1;cursor:default}
+  .page-btn:disabled:hover{background:transparent}
+
+  /* Timeline component */
+  .timeline{position:relative;padding-left:24px}
+  .timeline-line{position:absolute;left:8px;top:0;bottom:0;width:2px;background:rgba(0,0,0,0.08)}
+  .tl-item{position:relative;margin-bottom:20px}
+  .tl-dot{position:absolute;left:-20px;top:4px;width:12px;height:12px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 0 2px currentColor}
+  .tl-date{font-size:12px;color:#6a6a6a;margin-bottom:2px}
+  .tl-title{font-size:14px;font-weight:600;color:#222}
+  .tl-sub{font-size:13px;color:#6a6a6a;margin-top:2px}
+  .d-badge{background:#ff385c;color:#fff;padding:2px 6px;border-radius:4px;font-size:10px;margin-left:6px}
+</style></head><body>
+
+<div>
+  <div class="label">Pagination</div>
+  <div class="pagination">
+    <button class="page-btn nav" disabled>‹</button>
+    <button class="page-btn active">1</button>
+    <button class="page-btn">2</button>
+    <button class="page-btn">3</button>
+    <button class="page-btn">4</button>
+    <button class="page-btn">5</button>
+    <button class="page-btn nav">›</button>
+  </div>
+</div>
+
+<div>
+  <div class="label">Timeline — Application Schedule</div>
+  <div class="timeline">
+    <div class="timeline-line"></div>
+    <div class="tl-item">
+      <div class="tl-dot" style="color:#c1c1c1;background:#c1c1c1"></div>
+      <div class="tl-date">2026년 4월 4일</div>
+      <div class="tl-title">공고일</div>
+    </div>
+    <div class="tl-item">
+      <div class="tl-dot" style="color:#ff385c;background:#ff385c"></div>
+      <div class="tl-date" style="color:#ff385c;font-weight:600">
+        2026년 4월 6일 ~ 4월 14일
+        <span class="d-badge">D-6</span>
+      </div>
+      <div class="tl-title">신청 접수 기간</div>
+      <div class="tl-sub">2026.04.13 10:00 ~ 2026.04.15 17:00</div>
+    </div>
+    <div class="tl-item" style="margin-bottom:0">
+      <div class="tl-dot" style="color:#c1c1c1;background:#c1c1c1"></div>
+      <div class="tl-date">2026년 5월 7일</div>
+      <div class="tl-title">당첨자 발표</div>
+    </div>
+  </div>
+</div>
+
+</body></html>

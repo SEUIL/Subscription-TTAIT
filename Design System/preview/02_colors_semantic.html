@@ -1,0 +1,60 @@
+<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;600;700&display=swap');
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:'Noto Sans KR',sans-serif;background:#fff;padding:20px;display:flex;flex-direction:column;gap:16px}
+  .row{display:flex;gap:10px;flex-wrap:wrap}
+  .chip{display:flex;align-items:center;gap:8px;padding:8px 14px;border-radius:8px;font-size:12px;font-weight:700;border:1px solid transparent}
+  .label{font-size:11px;color:#6a6a6a;margin-bottom:6px;font-weight:600}
+  .pair{display:flex;gap:8px;align-items:center}
+  .dot{width:14px;height:14px;border-radius:50%;flex-shrink:0}
+  .val{font-size:11px;color:#6a6a6a;font-family:monospace}
+</style></head><body>
+
+<div>
+  <div class="label">Housing Type Tags</div>
+  <div class="row">
+    <div class="chip" style="background:#fff0f3;color:#ff385c;border-color:rgba(255,56,92,0.2)">국민임대</div>
+    <div class="chip" style="background:#fff0f3;color:#ff385c;border-color:rgba(255,56,92,0.2)">행복주택</div>
+    <div class="chip" style="background:#fff0f3;color:#ff385c;border-color:rgba(255,56,92,0.2)">공공분양</div>
+    <div class="chip" style="background:#f2f2f2;color:#222">영구임대</div>
+    <div class="chip" style="background:#f2f2f2;color:#222">매입임대</div>
+  </div>
+</div>
+
+<div>
+  <div class="label">Applicant Category Tags</div>
+  <div class="row">
+    <div class="chip" style="background:#eff6ff;color:#1d4ed8;border-color:rgba(29,78,216,0.2)">청년</div>
+    <div class="chip" style="background:#fdf4ff;color:#7e22ce;border-color:rgba(126,34,206,0.2)">신혼부부</div>
+    <div class="chip" style="background:#f0fdf4;color:#166534;border-color:rgba(22,101,52,0.2)">저소득</div>
+    <div class="chip" style="background:#fff7ed;color:#c2410c;border-color:rgba(194,65,12,0.2)">고령자</div>
+    <div class="chip" style="background:#f2f2f2;color:#222">무주택자</div>
+    <div class="chip" style="background:#f2f2f2;color:#222">다자녀</div>
+  </div>
+</div>
+
+<div>
+  <div class="label">Status Badges</div>
+  <div class="row">
+    <div class="chip" style="background:rgba(34,34,34,0.75);color:#fff">모집중</div>
+    <div class="chip" style="background:rgba(255,56,92,0.9);color:#fff">마감임박</div>
+    <div class="chip" style="background:rgba(106,106,106,0.75);color:#fff">마감</div>
+    <div class="chip" style="background:#ff385c;color:#fff">D-1</div>
+    <div class="chip" style="background:#222;color:#fff;border-radius:20px">국민임대</div>
+    <div class="chip" style="background:rgba(255,255,255,0.9);color:#222;border-radius:20px">아파트</div>
+  </div>
+</div>
+
+<div>
+  <div class="label">Tint Palette Reference</div>
+  <div class="row">
+    <div class="pair"><div class="dot" style="background:#fff0f3;border:1px solid rgba(255,56,92,0.3)"></div><div class="val">--tint-red #fff0f3</div></div>
+    <div class="pair"><div class="dot" style="background:#eff6ff;border:1px solid rgba(29,78,216,0.2)"></div><div class="val">--tint-blue #eff6ff</div></div>
+    <div class="pair"><div class="dot" style="background:#fdf4ff;border:1px solid rgba(126,34,206,0.2)"></div><div class="val">--tint-purple #fdf4ff</div></div>
+    <div class="pair"><div class="dot" style="background:#f0fdf4;border:1px solid rgba(22,101,52,0.2)"></div><div class="val">--tint-green #f0fdf4</div></div>
+    <div class="pair"><div class="dot" style="background:#fff7ed;border:1px solid rgba(194,65,12,0.2)"></div><div class="val">--tint-orange #fff7ed</div></div>
+  </div>
+</div>
+
+</body></html>

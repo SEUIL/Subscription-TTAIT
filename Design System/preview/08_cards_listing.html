@@ -1,0 +1,98 @@
+<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8">
+<style>
+  @font-face {
+  font-family: 'Noto Sans KR';
+  src: url('../fonts/NotoSansKR-VariableFont_wght.ttf') format('truetype');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:'Noto Sans KR',sans-serif;background:#f2f2f2;padding:24px;display:flex;gap:20px;flex-wrap:wrap;align-items:flex-start}
+
+  .card{background:#fff;border-radius:20px;overflow:hidden;width:220px;cursor:pointer;
+    transition:transform 0.2s,box-shadow 0.2s;text-decoration:none;color:inherit;display:block}
+  .card:hover{box-shadow:rgba(0,0,0,0.02) 0px 0px 0px 1px,rgba(0,0,0,0.04) 0px 2px 6px,rgba(0,0,0,0.1) 0px 4px 8px;transform:translateY(-2px)}
+
+  .img-wrap{position:relative;width:100%;padding-top:66.67%;background:#f2f2f2;border-radius:16px;overflow:hidden;flex-shrink:0}
+  .img-inner{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:40px}
+  .img-inner.hover-scale{transform:scale(1.03)}
+
+  .status{position:absolute;top:10px;left:10px;padding:4px 10px;border-radius:6px;font-size:11px;font-weight:600}
+  .status.open{background:rgba(34,34,34,0.75);color:#fff}
+  .status.closing{background:rgba(255,56,92,0.9);color:#fff}
+  .status.closed{background:rgba(106,106,106,0.75);color:#fff}
+
+  .heart{position:absolute;top:8px;right:8px;width:32px;height:32px;border-radius:50%;
+    background:transparent;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center}
+
+  .info{padding:10px 4px 0}
+  .provider{font-size:13px;color:#6a6a6a;font-weight:400;margin-bottom:3px}
+  .title{font-size:14px;font-weight:600;color:#222;line-height:1.4;letter-spacing:-0.2px;
+    display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;margin-bottom:4px}
+  .price{font-size:14px;color:#222;font-weight:500;margin-bottom:3px}
+  .deadline{font-size:12px;color:#6a6a6a}
+  .deadline.urgent{color:#ff385c;font-weight:600}
+  .tags{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}
+  .tag{padding:3px 8px;border-radius:4px;font-size:11px;font-weight:600}
+  .tag-red{background:#fff0f3;color:#ff385c;border:1px solid rgba(255,56,92,0.2)}
+  .tag-blue{background:#eff6ff;color:#1d4ed8;border:1px solid rgba(29,78,216,0.2)}
+  .tag-purple{background:#fdf4ff;color:#7e22ce;border:1px solid rgba(126,34,206,0.2)}
+  .tag-neutral{background:#f2f2f2;color:#222}
+</style></head><body>
+
+<!-- Card: Recruiting, urgent -->
+<a class="card" href="#">
+  <div class="img-wrap">
+    <div class="img-inner">🏢</div>
+    <span class="status open">모집중</span>
+    <button class="heart" onclick="event.preventDefault()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" width="22" height="22" filter="drop-shadow(0 1px 2px rgba(0,0,0,0.5))"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+    </button>
+  </div>
+  <div class="info">
+    <p class="provider">LH · 경기도 오산시</p>
+    <h3 class="title">오산세교2 21단지 국민임대주택 예비입주자 모집공고</h3>
+    <p class="price">보증금 <strong>1,119만원</strong> / 월세 <strong>149,570원</strong></p>
+    <p class="deadline urgent">마감 D-6 · 4월 14일</p>
+    <div class="tags"><span class="tag tag-blue">청년</span><span class="tag tag-red">국민임대</span></div>
+  </div>
+</a>
+
+<!-- Card: Imminent deadline, saved -->
+<a class="card" href="#">
+  <div class="img-wrap">
+    <div class="img-inner">🏗️</div>
+    <span class="status closing">마감임박</span>
+    <button class="heart" onclick="event.preventDefault()">
+      <svg viewBox="0 0 24 24" fill="rgba(255,56,92,0.9)" stroke="white" stroke-width="2" width="22" height="22"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+    </button>
+  </div>
+  <div class="info">
+    <p class="provider">LH · 인천광역시</p>
+    <h3 class="title">26년 2차 신혼·신생아Ⅰ 예비입주자 모집공고</h3>
+    <p class="price">보증금 <strong>8,500만원</strong> / 월세 <strong>320,000원</strong></p>
+    <p class="deadline urgent">마감 D-1 · 오늘!</p>
+    <div class="tags"><span class="tag tag-purple">신혼부부</span><span class="tag tag-red">행복주택</span></div>
+  </div>
+</a>
+
+<!-- Card: Closed -->
+<a class="card" href="#">
+  <div class="img-wrap">
+    <div class="img-inner" style="opacity:0.5">🏛️</div>
+    <span class="status closed">마감</span>
+    <button class="heart" onclick="event.preventDefault()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" width="22" height="22" filter="drop-shadow(0 1px 2px rgba(0,0,0,0.5))"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+    </button>
+  </div>
+  <div class="info">
+    <p class="provider">LH · 서울특별시 노원구</p>
+    <h3 class="title">노원구 상계동 국민임대주택 입주자 모집공고</h3>
+    <p class="price">보증금 <strong>3,800만원</strong> / 월세 <strong>175,000원</strong></p>
+    <p class="deadline" style="color:#6a6a6a">모집 종료</p>
+    <div class="tags"><span class="tag tag-neutral">국민임대</span></div>
+  </div>
+</a>
+
+</body></html>

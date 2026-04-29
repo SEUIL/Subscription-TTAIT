@@ -1,0 +1,94 @@
+<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;600;700&display=swap');
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:'Noto Sans KR',sans-serif;background:#fff;padding:0;display:flex;flex-direction:column}
+  .filter-bar{border-bottom:1px solid rgba(0,0,0,0.08);background:#fff}
+  .inner{display:flex;align-items:center;overflow-x:auto;scrollbar-width:none;padding:0 16px}
+  .inner::-webkit-scrollbar{display:none}
+  .pill{display:flex;flex-direction:column;align-items:center;padding:12px 18px;gap:6px;
+    cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap;flex-shrink:0;
+    transition:border-color 0.15s,opacity 0.15s;opacity:0.6}
+  .pill:hover{opacity:1}
+  .pill.active{border-bottom-color:#222;opacity:1}
+  .pill-icon{width:24px;height:24px;display:flex;align-items:center;justify-content:center}
+  .pill span{font-size:12px;font-weight:600;color:#222}
+
+  .tab-bar{display:flex;gap:0;border-bottom:1px solid rgba(0,0,0,0.1);background:#fff;padding:0 16px}
+  .tab{flex:0 0 auto;padding:14px 20px;border:none;background:transparent;cursor:pointer;
+    font-family:'Noto Sans KR',sans-serif;font-size:16px;font-weight:500;color:#6a6a6a;
+    border-bottom:2px solid transparent;margin-bottom:-1px;transition:color 0.15s,border-color 0.15s}
+  .tab.active{color:#222;font-weight:700;border-bottom-color:#222}
+
+  .step-row{display:flex;align-items:center;gap:8px;padding:16px}
+  .step{width:28px;height:28px;border-radius:50%;border:none;
+    font-family:'Noto Sans KR',sans-serif;font-size:12px;font-weight:700;
+    display:flex;align-items:center;justify-content:center}
+  .step-line{flex:1;height:2px;background:rgba(0,0,0,0.1)}
+  .step-line.done{background:#222}
+</style></head><body>
+
+<!-- Category pill bar -->
+<div class="filter-bar">
+  <div class="inner">
+    <div class="pill active">
+      <div class="pill-icon">
+        <svg viewBox="0 0 24 24" fill="currentColor" width="22" height="22"><path d="M12 3L2 12h3v9h6v-6h2v6h6v-9h3L12 3z"/></svg>
+      </div>
+      <span>전체</span>
+    </div>
+    <div class="pill">
+      <div class="pill-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="22" height="22"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
+      </div>
+      <span>국민임대</span>
+    </div>
+    <div class="pill">
+      <div class="pill-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="22" height="22"><path d="M3 21h18M5 21V7l7-4 7 4v14M9 21v-4h6v4"/></svg>
+      </div>
+      <span>행복주택</span>
+    </div>
+    <div class="pill">
+      <div class="pill-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="22" height="22"><circle cx="12" cy="12" r="9"/><path d="M12 6v6l4 2"/></svg>
+      </div>
+      <span>영구임대</span>
+    </div>
+    <div class="pill">
+      <div class="pill-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="22" height="22"><path d="M20 9v11a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V9"/><path d="M9 22V12h6v10M2 10.6L12 2l10 8.6"/></svg>
+      </div>
+      <span>매입임대</span>
+    </div>
+    <div class="pill">
+      <div class="pill-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="22" height="22"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+      </div>
+      <span>공공분양</span>
+    </div>
+    <div class="pill">
+      <div class="pill-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="22" height="22"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4"/></svg>
+      </div>
+      <span>기타</span>
+    </div>
+  </div>
+</div>
+
+<!-- Login/Signup tabs -->
+<div class="tab-bar" style="margin-top:16px">
+  <button class="tab active">로그인</button>
+  <button class="tab">회원가입</button>
+</div>
+
+<!-- Signup step indicator -->
+<div class="step-row">
+  <div class="step" style="background:#222;color:#fff">✓</div>
+  <div class="step-line done"></div>
+  <div class="step" style="background:#ff385c;color:#fff">2</div>
+  <div class="step-line"></div>
+  <div class="step" style="background:#f2f2f2;color:#6a6a6a">3</div>
+</div>
+
+</body></html>

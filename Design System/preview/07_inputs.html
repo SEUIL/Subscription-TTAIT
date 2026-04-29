@@ -1,0 +1,129 @@
+<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8">
+<style>
+  @font-face {
+  font-family: 'Noto Sans KR';
+  src: url('../fonts/NotoSansKR-VariableFont_wght.ttf') format('truetype');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:'Noto Sans KR',sans-serif;background:#fff;padding:24px;display:flex;flex-direction:column;gap:20px}
+  .label{font-size:11px;font-weight:700;color:#6a6a6a;text-transform:uppercase;letter-spacing:0.4px;margin-bottom:10px}
+  .row{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-start}
+
+  .input{width:220px;height:52px;padding:0 16px;border:1.5px solid #c1c1c1;border-radius:12px;
+    font-family:'Noto Sans KR',sans-serif;font-size:15px;color:#222;background:#fff;outline:none}
+  .input:focus{border-color:#222;box-shadow:0 0 0 3px rgba(34,34,34,0.08)}
+  .input.error{border-color:#ff385c;box-shadow:0 0 0 3px rgba(255,56,92,0.1)}
+  .input::placeholder{color:#aaa}
+
+  .input-wrap{position:relative;display:inline-block}
+  .eye-btn{position:absolute;right:12px;top:50%;transform:translateY(-50%);
+    background:transparent;border:none;cursor:pointer;color:#6a6a6a;
+    display:flex;align-items:center}
+
+  .search-bar{display:flex;align-items:center;background:#fff;
+    box-shadow:rgba(0,0,0,0.02) 0px 0px 0px 1px,rgba(0,0,0,0.04) 0px 2px 6px,rgba(0,0,0,0.1) 0px 4px 8px;
+    border-radius:40px;padding:0 8px 0 20px;height:56px;gap:12px;width:320px}
+  .search-bar input{flex:1;border:none;outline:none;font-family:'Noto Sans KR',sans-serif;
+    font-size:14px;font-weight:500;color:#222;background:transparent}
+  .search-bar input::placeholder{color:#6a6a6a;font-weight:400}
+  .search-btn{width:40px;height:40px;border-radius:50%;background:#ff385c;border:none;cursor:pointer;
+    display:flex;align-items:center;justify-content:center;flex-shrink:0}
+
+  select.input{cursor:pointer}
+
+  .hint{font-size:12px;color:#6a6a6a;margin-top:5px}
+  .err-msg{font-size:12px;color:#ff385c;margin-top:5px;font-weight:500}
+
+  .toggle{width:44px;height:24px;border-radius:12px;background:#c1c1c1;border:none;cursor:pointer;
+    position:relative;transition:background 0.2s;flex-shrink:0}
+  .toggle.on{background:#ff385c}
+  .toggle::after{content:'';position:absolute;width:20px;height:20px;border-radius:50%;
+    background:white;top:2px;left:2px;transition:transform 0.2s;
+    box-shadow:0 1px 3px rgba(0,0,0,0.2)}
+  .toggle.on::after{transform:translateX(20px)}
+
+  .range-input{width:200px;height:4px;border-radius:2px;background:#f2f2f2;
+    outline:none;border:none;cursor:pointer;-webkit-appearance:none}
+  .range-input::-webkit-slider-thumb{-webkit-appearance:none;width:20px;height:20px;
+    border-radius:50%;background:#222;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,0.2)}
+</style></head><body>
+
+<div>
+  <div class="label">Search Bar</div>
+  <div class="search-bar">
+    <input type="text" placeholder="지역, 공급유형, 기관으로 검색" />
+    <button class="search-btn">
+      <svg viewBox="0 0 24 24" fill="white" width="16" height="16"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+    </button>
+  </div>
+</div>
+
+<div>
+  <div class="label">Text Input States</div>
+  <div class="row">
+    <div>
+      <input class="input" type="text" placeholder="아이디를 입력하세요" />
+      <div class="hint">Default</div>
+    </div>
+    <div>
+      <input class="input" type="text" value="admin" style="border-color:#222;box-shadow:0 0 0 3px rgba(34,34,34,0.08)" />
+      <div class="hint">Focused</div>
+    </div>
+    <div>
+      <input class="input error" type="text" value="ab" />
+      <div class="err-msg">4자 이상 입력해주세요</div>
+    </div>
+    <div>
+      <input class="input" type="text" value="admin" readonly style="background:#f2f2f2;color:#6a6a6a" />
+      <div class="hint">Readonly</div>
+    </div>
+  </div>
+</div>
+
+<div>
+  <div class="label">Password Input</div>
+  <div class="input-wrap">
+    <input class="input" type="password" placeholder="비밀번호를 입력하세요" style="width:220px;padding-right:44px" />
+    <button class="eye-btn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+    </button>
+  </div>
+</div>
+
+<div>
+  <div class="label">Select</div>
+  <div class="row">
+    <select class="input">
+      <option>국민임대</option><option>행복주택</option><option>영구임대</option>
+    </select>
+    <select class="input">
+      <option>미혼</option><option>기혼</option><option>기타</option>
+    </select>
+  </div>
+</div>
+
+<div>
+  <div class="label">Toggle Switch</div>
+  <div class="row" style="align-items:center;gap:16px">
+    <button class="toggle on" onclick="this.classList.toggle('on')"></button>
+    <span style="font-size:13px;color:#222;font-weight:600">마감 D-3 알림 (ON)</span>
+    <button class="toggle" onclick="this.classList.toggle('on')"></button>
+    <span style="font-size:13px;color:#6a6a6a">새 추천 공고 알림 (OFF)</span>
+  </div>
+</div>
+
+<div>
+  <div class="label">Range Slider</div>
+  <div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;width:200px">
+      <span style="font-size:13px;color:#6a6a6a">최대 보증금</span>
+      <span style="font-size:14px;font-weight:700;color:#222">2,000만원</span>
+    </div>
+    <input type="range" class="range-input" min="0" max="100000000" value="20000000" />
+  </div>
+</div>
+
+</body></html>

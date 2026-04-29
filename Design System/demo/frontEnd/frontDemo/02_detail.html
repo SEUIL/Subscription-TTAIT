@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>오산세교2 21단지 국민임대주택 - 집구해</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700&display=swap');
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  :root {
+    --rausch: #ff385c;
+    --rausch-dark: #e00b41;
+    --near-black: #222222;
+    --gray-secondary: #6a6a6a;
+    --gray-border: #c1c1c1;
+    --gray-surface: #f2f2f2;
+    --white: #ffffff;
+    --shadow-card: rgba(0,0,0,0.02) 0px 0px 0px 1px, rgba(0,0,0,0.04) 0px 2px 6px, rgba(0,0,0,0.1) 0px 4px 8px;
+    --shadow-hover: rgba(0,0,0,0.08) 0px 4px 12px;
+    --font: 'Noto Sans KR', -apple-system, sans-serif;
+  }
+  body { font-family: var(--font); background: var(--white); color: var(--near-black); }
+
+  /* HEADER */
+  header {
+    position: sticky; top: 0; z-index: 100;
+    background: var(--white);
+    border-bottom: 1px solid rgba(0,0,0,0.08);
+    padding: 0 24px;
+  }
+  .header-inner {
+    max-width: 1280px; margin: 0 auto;
+    display: flex; align-items: center; gap: 16px;
+    height: 72px;
+  }
+  .back-btn {
+    width: 40px; height: 40px; border-radius: 50%;
+    background: var(--gray-surface); border: none; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: box-shadow 0.15s;
+    flex-shrink: 0;
+  }
+  .back-btn:hover { box-shadow: var(--shadow-hover); }
+  .back-btn svg { width: 18px; height: 18px; }
+  .header-title {
+    font-size: 15px; font-weight: 600; color: var(--near-black);
+    flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .header-actions { display: flex; gap: 8px; flex-shrink: 0; }
+  .icon-btn {
+    width: 40px; height: 40px; border-radius: 50%;
+    background: var(--gray-surface); border: none; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: box-shadow 0.15s;
+  }
+  .icon-btn:hover { box-shadow: var(--shadow-hover); }
+  .icon-btn svg { width: 18px; height: 18px; }
+
+  /* HERO IMAGE */
+  .hero {
+    width: 100%; height: 420px;
+    background: linear-gradient(135deg, #e8e8e8 0%, #d0d0d0 100%);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 80px;
+    position: relative; overflow: hidden;
+  }
+  .hero-overlay {
+    position: absolute; inset: 0;
+    background: linear-gradient(to top, rgba(0,0,0,0.3) 0%, transparent 50%);
+  }
+  .hero-badges {
+    position: absolute; bottom: 20px; left: 24px;
+    display: flex; gap: 8px;
+  }
+  .hero-badge {
+    padding: 6px 12px; border-radius: 20px;
+    font-size: 13px; font-weight: 600;
+    backdrop-filter: blur(8px);
+    background: rgba(255,255,255,0.9); color: var(--near-black);
+  }
+  .hero-badge.open { background: var(--rausch); color: white; }
+
+  /* LAYOUT */
+  .detail-layout {
+    max-width: 1280px; margin: 0 auto;
+    padding: 40px 24px 80px;
+    display: grid; grid-template-columns: 1fr 380px;
+    gap: 64px; align-items: start;
+  }
+
+  /* LEFT COLUMN */
+  .detail-left {}
+  .detail-provider {
+    font-size: 14px; color: var(--gray-secondary); font-weight: 400;
+    margin-bottom: 8px;
+  }
+  .detail-title {
+    font-size: 26px; font-weight: 700; color: var(--near-black);
+    line-height: 1.35; letter-spacing: -0.4px;
+    margin-bottom: 16px;
+  }
+  .tag-list { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 32px; }
+  .tag {
+    padding: 5px 12px; border-radius: 6px;
+    font-size: 12px; font-weight: 600;
+  }
+  .tag-open { background: #fff0f3; color: var(--rausch); border: 1px solid rgba(255,56,92,0.2); }
+  .tag-type { background: var(--gray-surface); color: var(--near-black); }
+  .tag-youth { background: #eff6ff; color: #1d4ed8; border: 1px solid rgba(29,78,216,0.15); }
+
+  .section { margin-bottom: 40px; }
+  .section-title {
+    font-size: 20px; font-weight: 700; color: var(--near-black);
+    letter-spacing: -0.3px; margin-bottom: 20px;
+    padding-bottom: 12px; border-bottom: 1px solid rgba(0,0,0,0.08);
+  }
+
+  .info-grid {
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 0;
+  }
+  .info-item {
+    padding: 14px 0;
+    border-bottom: 1px solid rgba(0,0,0,0.06);
+    display: flex; align-items: flex-start; gap: 12px;
+  }
+  .info-item:nth-child(odd) { padding-right: 24px; }
+  .info-label {
+    font-size: 13px; color: var(--gray-secondary); font-weight: 400;
+    min-width: 80px; flex-shrink: 0; padding-top: 2px;
+  }
+  .info-value {
+    font-size: 14px; color: var(--near-black); font-weight: 500;
+    line-height: 1.5;
+  }
+
+  /* MARKET COMPARISON */
+  .market-card {
+    background: #fff8f9; border: 1px solid rgba(255,56,92,0.15);
+    border-radius: 20px; padding: 24px; margin-top: 8px;
+  }
+  .market-title {
+    font-size: 14px; font-weight: 600; color: var(--near-black);
+    margin-bottom: 20px; display: flex; align-items: center; gap: 8px;
+  }
+  .market-title::before {
+    content: '';
+    display: inline-block; width: 8px; height: 8px;
+    border-radius: 50%; background: var(--rausch);
+  }
+  .market-row {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 16px;
+  }
+  .market-label { font-size: 13px; color: var(--gray-secondary); }
+  .market-compare {
+    display: flex; align-items: center; gap: 16px;
+  }
+  .market-value-public { font-size: 15px; font-weight: 700; color: var(--rausch); }
+  .market-value-market { font-size: 14px; font-weight: 500; color: var(--gray-secondary); text-decoration: line-through; }
+  .market-bar { margin-top: 8px; }
+  .market-bar-track {
+    height: 6px; border-radius: 3px; background: rgba(0,0,0,0.08);
+    overflow: hidden; margin-bottom: 4px;
+  }
+  .market-bar-fill { height: 100%; border-radius: 3px; background: var(--rausch); }
+  .market-summary {
+    margin-top: 16px; padding: 12px 16px;
+    background: rgba(255,56,92,0.08); border-radius: 12px;
+    font-size: 13px; font-weight: 600; color: var(--rausch);
+    text-align: center;
+  }
+
+  /* ATTACHMENTS */
+  .attachment-list { display: flex; flex-direction: column; gap: 8px; }
+  .attachment-item {
+    display: flex; align-items: center; gap: 12px;
+    padding: 14px 16px; border-radius: 12px;
+    border: 1px solid rgba(0,0,0,0.1);
+    cursor: pointer; transition: box-shadow 0.15s, border-color 0.15s;
+    text-decoration: none; color: inherit;
+  }
+  .attachment-item:hover { box-shadow: var(--shadow-hover); border-color: var(--near-black); }
+  .attachment-icon {
+    width: 36px; height: 36px; border-radius: 8px;
+    background: #fff0f3; display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .attachment-icon svg { width: 18px; height: 18px; fill: var(--rausch); }
+  .attachment-name { font-size: 14px; font-weight: 500; color: var(--near-black); flex: 1; }
+  .attachment-type { font-size: 11px; font-weight: 600; color: var(--gray-secondary); }
+
+  /* RIGHT COLUMN - STICKY CARD */
+  .sticky-card {
+    position: sticky; top: 90px;
+    background: var(--white);
+    box-shadow: var(--shadow-card);
+    border-radius: 20px; padding: 28px;
+  }
+  .sticky-price-main {
+    font-size: 13px; color: var(--gray-secondary); margin-bottom: 4px;
+  }
+  .sticky-price-row {
+    display: flex; align-items: baseline; gap: 4px;
+    margin-bottom: 20px;
+  }
+  .price-big { font-size: 26px; font-weight: 700; color: var(--near-black); letter-spacing: -0.5px; }
+  .price-unit { font-size: 14px; color: var(--gray-secondary); }
+
+  .deadline-info {
+    display: flex; align-items: center; gap: 8px;
+    padding: 12px 16px; border-radius: 12px;
+    background: #fff0f3; margin-bottom: 20px;
+  }
+  .deadline-icon { font-size: 16px; }
+  .deadline-text { font-size: 13px; font-weight: 600; color: var(--rausch); }
+
+  .apply-btn {
+    width: 100%; height: 56px; border-radius: 12px;
+    background: var(--rausch); border: none; cursor: pointer;
+    font-family: var(--font); font-size: 16px; font-weight: 600;
+    color: white; transition: background 0.2s, transform 0.1s;
+    margin-bottom: 12px;
+  }
+  .apply-btn:hover { background: var(--rausch-dark); }
+  .apply-btn:active { transform: scale(0.98); }
+
+  .save-btn {
+    width: 100%; height: 48px; border-radius: 12px;
+    background: transparent;
+    border: 1px solid var(--gray-border); cursor: pointer;
+    font-family: var(--font); font-size: 15px; font-weight: 500;
+    color: var(--near-black); transition: border-color 0.15s, box-shadow 0.15s;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    margin-bottom: 24px;
+  }
+  .save-btn:hover { border-color: var(--near-black); box-shadow: var(--shadow-hover); }
+  .save-btn svg { width: 16px; height: 16px; }
+
+  .quick-info { border-top: 1px solid rgba(0,0,0,0.08); padding-top: 20px; }
+  .quick-info-row {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 8px 0;
+  }
+  .quick-label { font-size: 13px; color: var(--gray-secondary); }
+  .quick-value { font-size: 13px; font-weight: 600; color: var(--near-black); }
+  .quick-value.highlight { color: var(--rausch); }
+
+  .contact-section {
+    margin-top: 20px; padding: 16px;
+    background: var(--gray-surface); border-radius: 12px;
+    text-align: center;
+  }
+  .contact-number { font-size: 20px; font-weight: 700; color: var(--near-black); letter-spacing: 1px; }
+  .contact-label { font-size: 12px; color: var(--gray-secondary); margin-top: 2px; }
+
+  @media (max-width: 950px) {
+    .detail-layout { grid-template-columns: 1fr; gap: 32px; }
+    .sticky-card { position: static; }
+    .hero { height: 280px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header>
+  <div class="header-inner">
+    <button class="back-btn" onclick="history.back()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
+    </button>
+    <p class="header-title">오산세교2 21단지 국민임대주택 예비입주자 모집공고</p>
+    <div class="header-actions">
+      <button class="icon-btn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
+      </button>
+      <button class="icon-btn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+      </button>
+    </div>
+  </div>
+</header>
+
+<!-- HERO -->
+<div class="hero">
+  🏢
+  <div class="hero-overlay"></div>
+  <div class="hero-badges">
+    <span class="hero-badge open">모집중</span>
+    <span class="hero-badge">국민임대</span>
+    <span class="hero-badge">아파트</span>
+  </div>
+</div>
+
+<!-- DETAIL LAYOUT -->
+<div class="detail-layout">
+
+  <!-- LEFT -->
+  <div class="detail-left">
+    <p class="detail-provider">LH · 경기도 오산시 초평중앙로 15</p>
+    <h1 class="detail-title">오산세교2 21단지 국민임대주택<br>예비입주자 모집공고</h1>
+    <div class="tag-list">
+      <span class="tag tag-open">모집중</span>
+      <span class="tag tag-type">국민임대</span>
+      <span class="tag tag-type">아파트</span>
+      <span class="tag tag-youth">청년</span>
+    </div>
+
+    <!-- 기본 정보 -->
+    <div class="section">
+      <h2 class="section-title">공고 정보</h2>
+      <div class="info-grid">
+        <div class="info-item">
+          <span class="info-label">공급기관</span>
+          <span class="info-value">LH (한국토지주택공사)</span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">공급유형</span>
+          <span class="info-value">국민임대</span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">주택유형</span>
+          <span class="info-value">아파트</span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">단지명</span>
+          <span class="info-value">오산세교2 21단지 (A-15블록)</span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">전용면적</span>
+          <span class="info-value">46.01㎡</span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">세대수</span>
+          <span class="info-value">총 694세대 (공급 155세대)</span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">난방방식</span>
+          <span class="info-value">지역난방</span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">입주예정</span>
+          <span class="info-value">2026년 10월</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 신청 일정 -->
+    <div class="section">
+      <h2 class="section-title">신청 일정</h2>
+      <div style="position:relative;padding-left:24px">
+        <div style="position:absolute;left:8px;top:0;bottom:0;width:2px;background:rgba(0,0,0,0.08)"></div>
+
+        <div style="position:relative;margin-bottom:24px">
+          <div style="position:absolute;left:-20px;top:4px;width:12px;height:12px;border-radius:50%;background:#d0d0d0;border:2px solid white;box-shadow:0 0 0 2px #d0d0d0"></div>
+          <p style="font-size:12px;color:var(--gray-secondary);margin-bottom:2px">2026년 4월 4일</p>
+          <p style="font-size:14px;font-weight:600;color:var(--near-black)">공고일</p>
+        </div>
+
+        <div style="position:relative;margin-bottom:24px">
+          <div style="position:absolute;left:-20px;top:4px;width:12px;height:12px;border-radius:50%;background:var(--rausch);border:2px solid white;box-shadow:0 0 0 2px var(--rausch)"></div>
+          <p style="font-size:12px;color:var(--rausch);font-weight:600;margin-bottom:2px">2026년 4월 6일 ~ 4월 14일 <span style="background:var(--rausch);color:white;padding:2px 6px;border-radius:4px;font-size:10px;margin-left:6px">D-6</span></p>
+          <p style="font-size:14px;font-weight:700;color:var(--near-black)">신청 접수 기간</p>
+          <p style="font-size:13px;color:var(--gray-secondary);margin-top:2px">2026.04.13 10:00 ~ 2026.04.15 17:00</p>
+        </div>
+
+        <div style="position:relative">
+          <div style="position:absolute;left:-20px;top:4px;width:12px;height:12px;border-radius:50%;background:#d0d0d0;border:2px solid white;box-shadow:0 0 0 2px #d0d0d0"></div>
+          <p style="font-size:12px;color:var(--gray-secondary);margin-bottom:2px">2026년 5월 7일</p>
+          <p style="font-size:14px;font-weight:600;color:var(--near-black)">당첨자 발표</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- 시세 비교 -->
+    <div class="section">
+      <h2 class="section-title">시세 비교</h2>
+      <div class="market-card">
+        <p class="market-title">주변 시세 대비 혜택 분석</p>
+
+        <div class="market-row">
+          <span class="market-label">보증금</span>
+          <div class="market-compare">
+            <span class="market-value-market">2,800만원</span>
+            <span style="font-size:18px">→</span>
+            <span class="market-value-public">1,119만원</span>
+          </div>
+        </div>
+        <div class="market-bar">
+          <div class="market-bar-track">
+            <div class="market-bar-fill" style="width:40%"></div>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--gray-secondary)">
+            <span>공공 1,119만원</span><span>시세 2,800만원</span>
+          </div>
+        </div>
+
+        <div class="market-row" style="margin-top:16px">
+          <span class="market-label">월세</span>
+          <div class="market-compare">
+            <span class="market-value-market">32만원</span>
+            <span style="font-size:18px">→</span>
+            <span class="market-value-public">149,570원</span>
+          </div>
+        </div>
+        <div class="market-bar">
+          <div class="market-bar-track">
+            <div class="market-bar-fill" style="width:47%"></div>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--gray-secondary)">
+            <span>공공 14.9만원</span><span>시세 32만원</span>
+          </div>
+        </div>
+
+        <div class="market-summary">🏠 주변 시세 대비 월세 부담이 약 53% 낮음</div>
+      </div>
+    </div>
+
+    <!-- 첨부파일 -->
+    <div class="section">
+      <h2 class="section-title">첨부 서류</h2>
+      <div class="attachment-list">
+        <a class="attachment-item" href="#">
+          <div class="attachment-icon">
+            <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm4 18H6V4h7v5h5v11z"/></svg>
+          </div>
+          <span class="attachment-name">공고문</span>
+          <span class="attachment-type">PDF</span>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;color:#6a6a6a;flex-shrink:0"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+        </a>
+      </div>
+    </div>
+
+    <!-- 안내사항 -->
+    <div class="section">
+      <h2 class="section-title">안내사항</h2>
+      <div style="padding:16px;background:var(--gray-surface);border-radius:12px;border-left:3px solid var(--rausch)">
+        <p style="font-size:14px;color:var(--near-black);line-height:1.7">
+          예비입주자 모집 관련 자세한 사항은 공고문을 확인하시기 바랍니다.
+        </p>
+        <a href="https://apply.lh.or.kr" style="display:inline-flex;align-items:center;gap:6px;margin-top:12px;font-size:13px;font-weight:600;color:var(--rausch);text-decoration:none">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+          LH청약센터 바로가기
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT - STICKY CARD -->
+  <div>
+    <div class="sticky-card">
+      <p class="sticky-price-main">보증금</p>
+      <div class="sticky-price-row">
+        <span class="price-big">1,119만원</span>
+      </div>
+      <p class="sticky-price-main" style="margin-top:-8px;margin-bottom:4px">월 임대료</p>
+      <div class="sticky-price-row">
+        <span class="price-big">149,570<span style="font-size:16px">원</span></span>
+      </div>
+
+      <div class="deadline-info">
+        <span class="deadline-icon">⏰</span>
+        <span class="deadline-text">신청 마감 D-6 · 4월 14일까지</span>
+      </div>
+
+      <button class="apply-btn">신청하러 가기 →</button>
+      <button class="save-btn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+        공고 저장하기
+      </button>
+
+      <div class="quick-info">
+        <div class="quick-info-row">
+          <span class="quick-label">공급유형</span>
+          <span class="quick-value">국민임대</span>
+        </div>
+        <div class="quick-info-row">
+          <span class="quick-label">주택유형</span>
+          <span class="quick-value">아파트</span>
+        </div>
+        <div class="quick-info-row">
+          <span class="quick-label">전용면적</span>
+          <span class="quick-value">46.01㎡</span>
+        </div>
+        <div class="quick-info-row">
+          <span class="quick-label">공급세대</span>
+          <span class="quick-value">155세대</span>
+        </div>
+        <div class="quick-info-row">
+          <span class="quick-label">신청기간</span>
+          <span class="quick-value highlight">4월 6일 ~ 4월 14일</span>
+        </div>
+        <div class="quick-info-row">
+          <span class="quick-label">당첨자 발표</span>
+          <span class="quick-value">2026년 5월 7일</span>
+        </div>
+      </div>
+
+      <div class="contact-section">
+        <p class="contact-label">문의전화</p>
+        <p class="contact-number">1600-1004</p>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+</body>
+</html>

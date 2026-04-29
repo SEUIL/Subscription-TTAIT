@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>로그인 / 회원가입 - 집구해</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700&display=swap');
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  :root {
+    --rausch: #ff385c;
+    --rausch-dark: #e00b41;
+    --near-black: #222222;
+    --gray-secondary: #6a6a6a;
+    --gray-border: #c1c1c1;
+    --gray-surface: #f2f2f2;
+    --white: #ffffff;
+    --shadow-card: rgba(0,0,0,0.02) 0px 0px 0px 1px, rgba(0,0,0,0.04) 0px 2px 6px, rgba(0,0,0,0.1) 0px 4px 8px;
+    --shadow-hover: rgba(0,0,0,0.08) 0px 4px 12px;
+    --font: 'Noto Sans KR', -apple-system, sans-serif;
+  }
+  body {
+    font-family: var(--font);
+    background: var(--white);
+    color: var(--near-black);
+    min-height: 100vh;
+    display: flex; flex-direction: column;
+  }
+
+  /* HEADER */
+  header {
+    padding: 20px 24px;
+    border-bottom: 1px solid rgba(0,0,0,0.08);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .logo { display: flex; align-items: center; gap: 8px; text-decoration: none; }
+  .logo-icon {
+    width: 32px; height: 32px; background: var(--rausch);
+    border-radius: 8px; display: flex; align-items: center; justify-content: center;
+  }
+  .logo-icon svg { width: 18px; height: 18px; fill: white; }
+  .logo-text { font-size: 20px; font-weight: 700; color: var(--rausch); letter-spacing: -0.3px; }
+  .close-btn {
+    width: 36px; height: 36px; border-radius: 50%; border: none;
+    background: var(--gray-surface); cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .close-btn svg { width: 16px; height: 16px; }
+
+  /* MAIN */
+  .auth-container {
+    flex: 1; display: flex; align-items: center; justify-content: center;
+    padding: 40px 24px;
+  }
+  .auth-card {
+    width: 100%; max-width: 480px;
+  }
+
+  /* TABS */
+  .tab-bar {
+    display: flex; gap: 0; margin-bottom: 32px;
+    border-bottom: 1px solid rgba(0,0,0,0.1);
+  }
+  .tab-btn {
+    flex: 1; padding: 14px 0;
+    border: none; background: transparent; cursor: pointer;
+    font-family: var(--font); font-size: 16px; font-weight: 500;
+    color: var(--gray-secondary);
+    border-bottom: 2px solid transparent; margin-bottom: -1px;
+    transition: color 0.15s, border-color 0.15s;
+  }
+  .tab-btn.active {
+    color: var(--near-black); font-weight: 700;
+    border-bottom-color: var(--near-black);
+  }
+
+  /* FORM */
+  .form-panel { display: none; }
+  .form-panel.active { display: block; }
+
+  .form-title {
+    font-size: 24px; font-weight: 700; color: var(--near-black);
+    letter-spacing: -0.4px; margin-bottom: 8px;
+  }
+  .form-subtitle {
+    font-size: 14px; color: var(--gray-secondary); margin-bottom: 32px; line-height: 1.6;
+  }
+
+  .form-group { margin-bottom: 16px; }
+  .form-label {
+    display: block; font-size: 13px; font-weight: 600;
+    color: var(--near-black); margin-bottom: 8px;
+  }
+  .form-input {
+    width: 100%; height: 52px; padding: 0 16px;
+    border: 1.5px solid var(--gray-border); border-radius: 12px;
+    font-family: var(--font); font-size: 15px; color: var(--near-black);
+    background: var(--white); outline: none;
+    transition: border-color 0.15s, box-shadow 0.15s;
+  }
+  .form-input:focus {
+    border-color: var(--near-black);
+    box-shadow: 0 0 0 3px rgba(34,34,34,0.08);
+  }
+  .form-input::placeholder { color: #aaaaaa; }
+  .form-input.error {
+    border-color: var(--rausch);
+    box-shadow: 0 0 0 3px rgba(255,56,92,0.1);
+  }
+
+  .input-wrapper { position: relative; }
+  .input-toggle {
+    position: absolute; right: 14px; top: 50%; transform: translateY(-50%);
+    width: 28px; height: 28px; border: none; background: transparent;
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+    color: var(--gray-secondary);
+  }
+  .input-toggle svg { width: 16px; height: 16px; }
+
+  .form-hint { font-size: 12px; color: var(--gray-secondary); margin-top: 6px; }
+  .form-error { font-size: 12px; color: var(--rausch); margin-top: 6px; font-weight: 500; }
+
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+  .submit-btn {
+    width: 100%; height: 56px; border-radius: 12px;
+    background: var(--near-black); border: none; cursor: pointer;
+    font-family: var(--font); font-size: 16px; font-weight: 600;
+    color: white; margin-top: 8px;
+    transition: background 0.2s, transform 0.1s;
+  }
+  .submit-btn:hover { background: #111111; }
+  .submit-btn:active { transform: scale(0.98); }
+  .submit-btn:disabled {
+    background: var(--gray-border); cursor: not-allowed;
+  }
+
+  .divider {
+    display: flex; align-items: center; gap: 12px;
+    margin: 24px 0;
+  }
+  .divider-line { flex: 1; height: 1px; background: rgba(0,0,0,0.1); }
+  .divider-text { font-size: 12px; color: var(--gray-secondary); font-weight: 500; }
+
+  .terms-text {
+    font-size: 12px; color: var(--gray-secondary); text-align: center;
+    margin-top: 16px; line-height: 1.7;
+  }
+  .terms-text a { color: var(--near-black); font-weight: 600; text-decoration: underline; }
+
+  /* SIGNUP STEP 2 */
+  .step-indicator {
+    display: flex; align-items: center; gap: 8px;
+    margin-bottom: 24px;
+  }
+  .step { width: 28px; height: 28px; border-radius: 50%; border: none;
+    font-family: var(--font); font-size: 12px; font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+    cursor: default;
+  }
+  .step.done { background: var(--near-black); color: white; }
+  .step.current { background: var(--rausch); color: white; }
+  .step.pending { background: var(--gray-surface); color: var(--gray-secondary); }
+  .step-line { flex: 1; height: 2px; background: rgba(0,0,0,0.1); }
+  .step-line.done { background: var(--near-black); }
+
+  /* CATEGORY SELECT */
+  .category-grid {
+    display: grid; grid-template-columns: repeat(3, 1fr);
+    gap: 10px; margin-top: 8px;
+  }
+  .category-chip {
+    padding: 12px 8px; border-radius: 12px;
+    border: 1.5px solid var(--gray-border);
+    cursor: pointer; text-align: center;
+    transition: border-color 0.15s, background 0.15s;
+  }
+  .category-chip:hover { border-color: var(--near-black); }
+  .category-chip.selected {
+    border-color: var(--rausch); background: #fff0f3;
+  }
+  .category-chip-icon { font-size: 24px; margin-bottom: 4px; }
+  .category-chip-text { font-size: 12px; font-weight: 600; color: var(--near-black); }
+  .category-chip.selected .category-chip-text { color: var(--rausch); }
+
+  /* SUCCESS STATE */
+  .success-state {
+    text-align: center; padding: 40px 0;
+  }
+  .success-icon {
+    width: 72px; height: 72px; border-radius: 50%;
+    background: #f0fff4; border: 2px solid #4ade80;
+    display: flex; align-items: center; justify-content: center;
+    margin: 0 auto 24px;
+    font-size: 32px;
+  }
+
+  @media (max-width: 480px) {
+    .form-row { grid-template-columns: 1fr; }
+    .category-grid { grid-template-columns: repeat(2, 1fr); }
+  }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header>
+  <a class="logo" href="01_main_list.html">
+    <div class="logo-icon">
+      <svg viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
+    </div>
+    <span class="logo-text">집구해</span>
+  </a>
+  <button class="close-btn" onclick="history.back()">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+  </button>
+</header>
+
+<!-- AUTH CONTAINER -->
+<div class="auth-container">
+  <div class="auth-card">
+
+    <!-- TABS -->
+    <div class="tab-bar">
+      <button class="tab-btn active" onclick="switchTab('login', this)">로그인</button>
+      <button class="tab-btn" onclick="switchTab('signup', this)">회원가입</button>
+    </div>
+
+    <!-- LOGIN PANEL -->
+    <div class="form-panel active" id="panel-login">
+      <h1 class="form-title">다시 만나서 반가워요 👋</h1>
+      <p class="form-subtitle">공공임대주택 공고를 저장하고<br>맞춤 추천을 받아보세요.</p>
+
+      <div class="form-group">
+        <label class="form-label">아이디</label>
+        <input type="text" class="form-input" placeholder="아이디를 입력하세요" />
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">비밀번호</label>
+        <div class="input-wrapper">
+          <input type="password" class="form-input" placeholder="비밀번호를 입력하세요" id="pw-login" />
+          <button class="input-toggle" onclick="togglePw('pw-login', this)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <button class="submit-btn" style="margin-top:24px">로그인</button>
+
+      <div class="terms-text" style="margin-top:20px">
+        <a href="#">비밀번호를 잊으셨나요?</a>
+      </div>
+    </div>
+
+    <!-- SIGNUP PANEL -->
+    <div class="form-panel" id="panel-signup">
+
+      <!-- STEP 1 -->
+      <div id="signup-step1">
+        <div class="step-indicator">
+          <div class="step current">1</div>
+          <div class="step-line"></div>
+          <div class="step pending">2</div>
+        </div>
+
+        <h1 class="form-title">계정 만들기</h1>
+        <p class="form-subtitle">기본 정보를 입력해주세요.</p>
+
+        <div class="form-group">
+          <label class="form-label">아이디</label>
+          <input type="text" class="form-input" placeholder="영문, 숫자 4~20자" />
+          <p class="form-hint">사용 가능한 아이디입니다.</p>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">비밀번호</label>
+          <div class="input-wrapper">
+            <input type="password" class="form-input" placeholder="8자 이상, 영문+숫자 조합" id="pw-signup" />
+            <button class="input-toggle" onclick="togglePw('pw-signup', this)">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">이메일</label>
+            <input type="email" class="form-input" placeholder="이메일 주소" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">휴대폰 번호</label>
+            <input type="tel" class="form-input" placeholder="010-0000-0000" />
+          </div>
+        </div>
+
+        <button class="submit-btn" onclick="goStep2()" style="margin-top:8px">다음 단계 →</button>
+
+        <p class="terms-text">
+          가입하면 <a href="#">이용약관</a>과 <a href="#">개인정보처리방침</a>에<br>동의하는 것으로 간주됩니다.
+        </p>
+      </div>
+
+      <!-- STEP 2 -->
+      <div id="signup-step2" style="display:none">
+        <div class="step-indicator">
+          <div class="step done">✓</div>
+          <div class="step-line done"></div>
+          <div class="step current">2</div>
+        </div>
+
+        <h1 class="form-title">맞춤 정보 입력</h1>
+        <p class="form-subtitle">나에게 맞는 공고를 추천받으려면<br>아래 정보를 입력해주세요. (선택 사항)</p>
+
+        <div class="form-group">
+          <label class="form-label">나이</label>
+          <input type="number" class="form-input" placeholder="나이를 입력하세요" />
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">혼인 상태</label>
+            <select class="form-input" style="cursor:pointer">
+              <option value="">선택</option>
+              <option value="SINGLE">미혼</option>
+              <option value="MARRIED">기혼</option>
+              <option value="OTHER">기타</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">자녀 수</label>
+            <input type="number" class="form-input" placeholder="0명" min="0" />
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">선호 지역 (시/도)</label>
+            <select class="form-input" style="cursor:pointer">
+              <option value="">선택</option>
+              <option>경기도</option>
+              <option>서울특별시</option>
+              <option>인천광역시</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">선호 지역 (시/군/구)</label>
+            <select class="form-input" style="cursor:pointer">
+              <option value="">시/도 선택 후</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">해당하는 유형을 모두 선택해주세요</label>
+          <div class="category-grid">
+            <div class="category-chip selected" onclick="toggleChip(this)">
+              <div class="category-chip-icon">👤</div>
+              <div class="category-chip-text">청년</div>
+            </div>
+            <div class="category-chip" onclick="toggleChip(this)">
+              <div class="category-chip-icon">💑</div>
+              <div class="category-chip-text">신혼부부</div>
+            </div>
+            <div class="category-chip" onclick="toggleChip(this)">
+              <div class="category-chip-icon">🏠</div>
+              <div class="category-chip-text">무주택자</div>
+            </div>
+            <div class="category-chip" onclick="toggleChip(this)">
+              <div class="category-chip-icon">👴</div>
+              <div class="category-chip-text">고령자</div>
+            </div>
+            <div class="category-chip" onclick="toggleChip(this)">
+              <div class="category-chip-icon">💰</div>
+              <div class="category-chip-text">저소득층</div>
+            </div>
+            <div class="category-chip" onclick="toggleChip(this)">
+              <div class="category-chip-icon">👨‍👩‍👧‍👦</div>
+              <div class="category-chip-text">다자녀</div>
+            </div>
+          </div>
+        </div>
+
+        <div style="display:flex;gap:12px;margin-top:16px">
+          <button class="submit-btn" onclick="goStep1()" style="background:var(--gray-surface);color:var(--near-black);flex:0 0 auto;width:auto;padding:0 24px">← 이전</button>
+          <button class="submit-btn" style="flex:1" onclick="showSuccess()">가입 완료</button>
+        </div>
+      </div>
+
+      <!-- SUCCESS -->
+      <div id="signup-success" style="display:none">
+        <div class="success-state">
+          <div class="success-icon">🎉</div>
+          <h2 style="font-size:22px;font-weight:700;margin-bottom:8px;letter-spacing:-0.3px">가입이 완료됐어요!</h2>
+          <p style="font-size:14px;color:var(--gray-secondary);line-height:1.7;margin-bottom:32px">
+            선택하신 정보를 기반으로<br>맞춤 공고를 추천해드릴게요.
+          </p>
+          <a href="01_main_list.html" style="display:inline-block;padding:16px 40px;background:var(--rausch);color:white;border-radius:12px;font-size:16px;font-weight:600;text-decoration:none;transition:background 0.2s" onmouseover="this.style.background='#e00b41'" onmouseout="this.style.background='#ff385c'">
+            공고 둘러보기 →
+          </a>
+        </div>
+      </div>
+
+    </div><!-- /signup panel -->
+  </div>
+</div>
+
+<script>
+function switchTab(tab, btn) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.form-panel').forEach(p => p.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('panel-' + tab).classList.add('active');
+}
+
+function togglePw(id, btn) {
+  const input = document.getElementById(id);
+  input.type = input.type === 'password' ? 'text' : 'password';
+}
+
+function toggleChip(el) {
+  el.classList.toggle('selected');
+}
+
+function goStep2() {
+  document.getElementById('signup-step1').style.display = 'none';
+  document.getElementById('signup-step2').style.display = 'block';
+}
+
+function goStep1() {
+  document.getElementById('signup-step2').style.display = 'none';
+  document.getElementById('signup-step1').style.display = 'block';
+}
+
+function showSuccess() {
+  document.getElementById('signup-step2').style.display = 'none';
+  document.getElementById('signup-success').style.display = 'block';
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,639 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>집구해 - 공공임대주택 공고</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --rausch: #ff385c;
+    --rausch-dark: #e00b41;
+    --near-black: #222222;
+    --gray-secondary: #6a6a6a;
+    --gray-border: #c1c1c1;
+    --gray-surface: #f2f2f2;
+    --white: #ffffff;
+    --shadow-card: rgba(0,0,0,0.02) 0px 0px 0px 1px, rgba(0,0,0,0.04) 0px 2px 6px, rgba(0,0,0,0.1) 0px 4px 8px;
+    --shadow-hover: rgba(0,0,0,0.08) 0px 4px 12px;
+    --font: 'Noto Sans KR', -apple-system, sans-serif;
+  }
+
+  body {
+    font-family: var(--font);
+    background: var(--white);
+    color: var(--near-black);
+    min-height: 100vh;
+  }
+
+  /* HEADER */
+  header {
+    position: sticky; top: 0; z-index: 100;
+    background: var(--white);
+    border-bottom: 1px solid rgba(0,0,0,0.08);
+    padding: 0 24px;
+  }
+  .header-inner {
+    max-width: 1280px; margin: 0 auto;
+    display: flex; align-items: center; gap: 16px;
+    height: 80px;
+  }
+  .logo {
+    display: flex; align-items: center; gap: 8px;
+    text-decoration: none;
+    flex-shrink: 0;
+  }
+  .logo-icon {
+    width: 32px; height: 32px;
+    background: var(--rausch);
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .logo-icon svg { width: 18px; height: 18px; fill: white; }
+  .logo-text {
+    font-size: 20px; font-weight: 700;
+    color: var(--rausch); letter-spacing: -0.3px;
+  }
+
+  .search-bar {
+    flex: 1; max-width: 600px;
+    display: flex; align-items: center;
+    background: var(--white);
+    box-shadow: var(--shadow-card);
+    border-radius: 40px;
+    padding: 0 8px 0 20px;
+    height: 56px;
+    gap: 12px;
+    transition: box-shadow 0.2s;
+  }
+  .search-bar:hover { box-shadow: var(--shadow-hover); }
+  .search-bar input {
+    flex: 1; border: none; outline: none;
+    font-family: var(--font); font-size: 14px;
+    font-weight: 500; color: var(--near-black);
+    background: transparent;
+  }
+  .search-bar input::placeholder { color: var(--gray-secondary); font-weight: 400; }
+  .search-btn {
+    width: 40px; height: 40px; border-radius: 50%;
+    background: var(--rausch); border: none; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: background 0.2s, transform 0.1s;
+    flex-shrink: 0;
+  }
+  .search-btn:hover { background: var(--rausch-dark); }
+  .search-btn:active { transform: scale(0.92); }
+  .search-btn svg { width: 16px; height: 16px; fill: white; }
+
+  .header-actions {
+    display: flex; align-items: center; gap: 8px;
+    margin-left: auto; flex-shrink: 0;
+  }
+  .btn-host {
+    padding: 0 16px; height: 42px;
+    border: none; background: transparent; cursor: pointer;
+    font-family: var(--font); font-size: 14px; font-weight: 500;
+    color: var(--near-black); border-radius: 21px;
+    transition: background 0.15s;
+  }
+  .btn-host:hover { background: var(--gray-surface); }
+  .btn-avatar {
+    width: 42px; height: 42px; border-radius: 50%;
+    background: var(--near-black);
+    border: none; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: var(--shadow-card);
+    transition: box-shadow 0.2s;
+    overflow: hidden;
+  }
+  .btn-avatar:hover { box-shadow: var(--shadow-hover); }
+  .btn-avatar span {
+    color: white; font-size: 14px; font-weight: 600;
+    font-family: var(--font);
+  }
+
+  /* FILTER PILLS */
+  .filter-bar {
+    border-bottom: 1px solid rgba(0,0,0,0.08);
+    background: var(--white);
+  }
+  .filter-bar-inner {
+    max-width: 1280px; margin: 0 auto;
+    padding: 0 24px;
+    display: flex; align-items: center; gap: 0;
+    overflow-x: auto; scrollbar-width: none;
+    position: relative;
+  }
+  .filter-bar-inner::-webkit-scrollbar { display: none; }
+
+  .filter-pill {
+    display: flex; flex-direction: column; align-items: center;
+    padding: 12px 20px; gap: 6px; cursor: pointer;
+    border-bottom: 2px solid transparent;
+    white-space: nowrap; flex-shrink: 0;
+    transition: border-color 0.15s, opacity 0.15s;
+    opacity: 0.6;
+  }
+  .filter-pill:hover { opacity: 1; }
+  .filter-pill.active {
+    border-bottom-color: var(--near-black);
+    opacity: 1;
+  }
+  .filter-pill-icon {
+    width: 24px; height: 24px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .filter-pill-icon svg { width: 22px; height: 22px; }
+  .filter-pill span {
+    font-size: 12px; font-weight: 600; color: var(--near-black);
+  }
+
+  /* FILTERS TOGGLE */
+  .filters-section {
+    max-width: 1280px; margin: 0 auto;
+    padding: 16px 24px;
+    display: flex; align-items: center; gap: 12px;
+    flex-wrap: wrap;
+  }
+  .filter-tag {
+    display: flex; align-items: center; gap: 8px;
+    padding: 8px 16px;
+    border: 1px solid var(--gray-border); border-radius: 8px;
+    font-size: 13px; font-weight: 500; color: var(--near-black);
+    background: var(--white); cursor: pointer;
+    transition: box-shadow 0.15s, border-color 0.15s;
+  }
+  .filter-tag:hover { box-shadow: var(--shadow-hover); border-color: var(--near-black); }
+  .filter-tag.active {
+    background: var(--near-black); color: var(--white);
+    border-color: var(--near-black);
+  }
+  .filter-tag svg { width: 14px; height: 14px; }
+  .result-count {
+    margin-left: auto;
+    font-size: 13px; color: var(--gray-secondary); font-weight: 400;
+  }
+  .result-count strong { color: var(--near-black); font-weight: 600; }
+
+  /* GRID */
+  .main-content {
+    max-width: 1280px; margin: 0 auto;
+    padding: 24px 24px 48px;
+  }
+  .listing-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 24px;
+  }
+
+  /* CARD */
+  .listing-card {
+    cursor: pointer;
+    border-radius: 20px;
+    overflow: hidden;
+    transition: transform 0.2s, box-shadow 0.2s;
+    background: var(--white);
+    box-shadow: none;
+    text-decoration: none; color: inherit;
+    display: block;
+  }
+  .listing-card:hover {
+    box-shadow: var(--shadow-card);
+    transform: translateY(-2px);
+  }
+  .card-image-wrap {
+    position: relative;
+    width: 100%; padding-top: 66.67%;
+    background: var(--gray-surface);
+    border-radius: 16px;
+    overflow: hidden;
+    flex-shrink: 0;
+  }
+  .card-image {
+    position: absolute; inset: 0;
+    width: 100%; height: 100%;
+    object-fit: cover;
+    transition: transform 0.3s;
+  }
+  .listing-card:hover .card-image { transform: scale(1.03); }
+  .card-image-placeholder {
+    position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 48px;
+  }
+
+  .status-badge {
+    position: absolute; top: 12px; left: 12px;
+    padding: 4px 10px; border-radius: 6px;
+    font-size: 11px; font-weight: 600;
+    backdrop-filter: blur(4px);
+  }
+  .status-badge.open {
+    background: rgba(34,34,34,0.75); color: white;
+  }
+  .status-badge.closing {
+    background: rgba(255,56,92,0.9); color: white;
+  }
+  .status-badge.closed {
+    background: rgba(106,106,106,0.75); color: white;
+  }
+
+  .heart-btn {
+    position: absolute; top: 10px; right: 10px;
+    width: 32px; height: 32px; border-radius: 50%;
+    background: transparent; border: none; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: transform 0.15s;
+  }
+  .heart-btn:hover { transform: scale(1.1); }
+  .heart-btn svg { width: 22px; height: 22px; }
+
+  .card-info { padding: 12px 4px 0; }
+  .card-title {
+    font-size: 14px; font-weight: 600; color: var(--near-black);
+    line-height: 1.4; letter-spacing: -0.2px;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+    overflow: hidden;
+    margin-bottom: 4px;
+  }
+  .card-provider {
+    font-size: 13px; color: var(--gray-secondary); font-weight: 400;
+    margin-bottom: 6px;
+  }
+  .card-price {
+    font-size: 14px; color: var(--near-black); font-weight: 500;
+    margin-bottom: 4px;
+  }
+  .card-price strong { font-weight: 700; }
+  .card-deadline {
+    font-size: 12px; color: var(--gray-secondary); font-weight: 400;
+  }
+  .card-deadline.urgent { color: var(--rausch); font-weight: 600; }
+
+  .tag-list {
+    display: flex; flex-wrap: wrap; gap: 4px;
+    margin-top: 8px;
+  }
+  .tag {
+    padding: 3px 8px; border-radius: 4px;
+    font-size: 11px; font-weight: 600;
+    background: #fff0f3; color: var(--rausch);
+    border: 1px solid rgba(255,56,92,0.2);
+  }
+  .tag.youth { background: #eff6ff; color: #1d4ed8; border-color: rgba(29,78,216,0.2); }
+  .tag.newlywed { background: #fdf4ff; color: #7e22ce; border-color: rgba(126,34,206,0.2); }
+
+  /* PAGINATION */
+  .pagination {
+    display: flex; align-items: center; justify-content: center;
+    gap: 4px; padding: 32px 0;
+  }
+  .page-btn {
+    width: 40px; height: 40px; border-radius: 50%;
+    border: none; background: transparent; cursor: pointer;
+    font-family: var(--font); font-size: 14px; font-weight: 500;
+    color: var(--near-black); display: flex; align-items: center; justify-content: center;
+    transition: background 0.15s;
+  }
+  .page-btn:hover { background: var(--gray-surface); }
+  .page-btn.active {
+    background: var(--near-black); color: white; font-weight: 700;
+  }
+  .page-btn.nav { font-size: 18px; }
+
+  /* NOTIFICATION BADGE */
+  .notif-badge {
+    position: relative;
+  }
+  .notif-dot {
+    position: absolute; top: 2px; right: 2px;
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--rausch); border: 2px solid white;
+  }
+  .bell-btn {
+    width: 42px; height: 42px; border-radius: 50%;
+    background: var(--gray-surface); border: none; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: background 0.15s;
+    position: relative;
+  }
+  .bell-btn:hover { background: #e8e8e8; }
+  .bell-btn svg { width: 18px; height: 18px; }
+
+  @media (max-width: 1128px) { .listing-grid { grid-template-columns: repeat(3, 1fr); } }
+  @media (max-width: 744px) { .listing-grid { grid-template-columns: repeat(2, 1fr); gap: 16px; } }
+  @media (max-width: 550px) {
+    .listing-grid { grid-template-columns: 1fr; }
+    .logo-text { display: none; }
+    .btn-host { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header>
+  <div class="header-inner">
+    <a class="logo" href="#">
+      <div class="logo-icon">
+        <svg viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
+      </div>
+      <span class="logo-text">집구해</span>
+    </a>
+
+    <div class="search-bar">
+      <input type="text" placeholder="지역, 공급유형, 기관으로 검색" />
+      <button class="search-btn">
+        <svg viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+      </button>
+    </div>
+
+    <div class="header-actions">
+      <button class="btn-host">추천 공고</button>
+      <div class="notif-badge">
+        <button class="bell-btn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+        </button>
+        <div class="notif-dot"></div>
+      </div>
+      <button class="btn-avatar"><span>관</span></button>
+    </div>
+  </div>
+</header>
+
+<!-- FILTER PILLS -->
+<div class="filter-bar">
+  <div class="filter-bar-inner">
+    <div class="filter-pill active">
+      <div class="filter-pill-icon">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 3L2 12h3v9h6v-6h2v6h6v-9h3L12 3z"/></svg>
+      </div>
+      <span>전체</span>
+    </div>
+    <div class="filter-pill">
+      <div class="filter-pill-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
+      </div>
+      <span>국민임대</span>
+    </div>
+    <div class="filter-pill">
+      <div class="filter-pill-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18M5 21V7l7-4 7 4v14M9 21v-4h6v4"/></svg>
+      </div>
+      <span>행복주택</span>
+    </div>
+    <div class="filter-pill">
+      <div class="filter-pill-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 6v6l4 2"/></svg>
+      </div>
+      <span>영구임대</span>
+    </div>
+    <div class="filter-pill">
+      <div class="filter-pill-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 9v11a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V9"/><path d="M9 22V12h6v10M2 10.6L12 2l10 8.6"/></svg>
+      </div>
+      <span>매입임대</span>
+    </div>
+    <div class="filter-pill">
+      <div class="filter-pill-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+      </div>
+      <span>공공분양</span>
+    </div>
+    <div class="filter-pill">
+      <div class="filter-pill-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/></svg>
+      </div>
+      <span>기타</span>
+    </div>
+  </div>
+</div>
+
+<!-- FILTERS + COUNT -->
+<div class="filters-section">
+  <button class="filter-tag active">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+    경기도 · 오산시
+  </button>
+  <button class="filter-tag">모집중</button>
+  <button class="filter-tag">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+    필터
+  </button>
+  <button class="filter-tag" style="color:#ff385c;border-color:#ff385c">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+    추천순
+  </button>
+  <button class="filter-tag">마감순</button>
+  <button class="filter-tag">최신순</button>
+  <span class="result-count">총 <strong>42</strong>개의 공고</span>
+</div>
+
+<!-- LISTING GRID -->
+<div class="main-content">
+  <div class="listing-grid">
+
+    <!-- Card 1 -->
+    <a class="listing-card" href="02_detail.html">
+      <div class="card-image-wrap">
+        <div class="card-image-placeholder">🏢</div>
+        <span class="status-badge open">모집중</span>
+        <button class="heart-btn" onclick="event.preventDefault()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" filter="drop-shadow(0 1px 2px rgba(0,0,0,0.5))"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+        </button>
+      </div>
+      <div class="card-info">
+        <p class="card-provider">LH · 경기도 오산시</p>
+        <h3 class="card-title">오산세교2 21단지 국민임대주택 예비입주자 모집공고</h3>
+        <p class="card-price">보증금 <strong>1,119만원</strong> / 월세 <strong>149,570원</strong></p>
+        <p class="card-deadline urgent">마감 D-6 · 4월 14일</p>
+        <div class="tag-list">
+          <span class="tag youth">청년</span>
+          <span class="tag">국민임대</span>
+        </div>
+      </div>
+    </a>
+
+    <!-- Card 2 -->
+    <a class="listing-card" href="#">
+      <div class="card-image-wrap">
+        <div class="card-image-placeholder">🏗️</div>
+        <span class="status-badge open">모집중</span>
+        <button class="heart-btn" onclick="event.preventDefault()">
+          <svg viewBox="0 0 24 24" fill="rgba(255,56,92,0.9)" stroke="white" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+        </button>
+      </div>
+      <div class="card-info">
+        <p class="card-provider">LH · 인천광역시</p>
+        <h3 class="card-title">26년 2차 신혼·신생아Ⅰ 예비입주자 모집공고 (인천,부천)</h3>
+        <p class="card-price">보증금 <strong>8,500만원</strong> / 월세 <strong>320,000원</strong></p>
+        <p class="card-deadline urgent">마감 D-1 · 4월 8일</p>
+        <div class="tag-list">
+          <span class="tag newlywed">신혼부부</span>
+          <span class="tag">행복주택</span>
+        </div>
+      </div>
+    </a>
+
+    <!-- Card 3 -->
+    <a class="listing-card" href="#">
+      <div class="card-image-wrap">
+        <div class="card-image-placeholder">🏠</div>
+        <span class="status-badge open">모집중</span>
+        <button class="heart-btn" onclick="event.preventDefault()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" filter="drop-shadow(0 1px 2px rgba(0,0,0,0.5))"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+        </button>
+      </div>
+      <div class="card-info">
+        <p class="card-provider">LH · 서울특별시</p>
+        <h3 class="card-title">서울 강서구 마곡지구 영구임대 입주자 모집공고</h3>
+        <p class="card-price">보증금 <strong>2,340만원</strong> / 월세 <strong>98,000원</strong></p>
+        <p class="card-deadline">마감 D-15 · 4월 23일</p>
+        <div class="tag-list">
+          <span class="tag">영구임대</span>
+          <span class="tag" style="background:#f0fdf4;color:#166534;border-color:rgba(22,101,52,0.2)">저소득</span>
+        </div>
+      </div>
+    </a>
+
+    <!-- Card 4 -->
+    <a class="listing-card" href="#">
+      <div class="card-image-wrap">
+        <div class="card-image-placeholder">🏘️</div>
+        <span class="status-badge closing">마감임박</span>
+        <button class="heart-btn" onclick="event.preventDefault()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" filter="drop-shadow(0 1px 2px rgba(0,0,0,0.5))"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+        </button>
+      </div>
+      <div class="card-info">
+        <p class="card-provider">LH · 경기도 수원시</p>
+        <h3 class="card-title">수원 광교신도시 공공분양 (일반공급) 입주자 모집</h3>
+        <p class="card-price">분양가 <strong>3억 2,000만원</strong></p>
+        <p class="card-deadline urgent">마감 D-2 · 4월 10일</p>
+        <div class="tag-list">
+          <span class="tag">공공분양</span>
+        </div>
+      </div>
+    </a>
+
+    <!-- Card 5 -->
+    <a class="listing-card" href="#">
+      <div class="card-image-wrap">
+        <div class="card-image-placeholder">🏙️</div>
+        <span class="status-badge open">모집중</span>
+        <button class="heart-btn" onclick="event.preventDefault()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" filter="drop-shadow(0 1px 2px rgba(0,0,0,0.5))"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+        </button>
+      </div>
+      <div class="card-info">
+        <p class="card-provider">LH · 인천광역시 부평구</p>
+        <h3 class="card-title">부평구 청천동 행복주택 입주자 모집공고</h3>
+        <p class="card-price">보증금 <strong>5,200만원</strong> / 월세 <strong>230,000원</strong></p>
+        <p class="card-deadline">마감 D-20 · 4월 28일</p>
+        <div class="tag-list">
+          <span class="tag youth">청년</span>
+          <span class="tag">행복주택</span>
+        </div>
+      </div>
+    </a>
+
+    <!-- Card 6 -->
+    <a class="listing-card" href="#">
+      <div class="card-image-wrap">
+        <div class="card-image-placeholder">🏛️</div>
+        <span class="status-badge closed">마감</span>
+        <button class="heart-btn" onclick="event.preventDefault()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" filter="drop-shadow(0 1px 2px rgba(0,0,0,0.5))"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+        </button>
+      </div>
+      <div class="card-info">
+        <p class="card-provider">LH · 서울특별시 노원구</p>
+        <h3 class="card-title">노원구 상계동 국민임대주택 입주자 모집공고</h3>
+        <p class="card-price">보증금 <strong>3,800만원</strong> / 월세 <strong>175,000원</strong></p>
+        <p class="card-deadline" style="color:#6a6a6a">모집 종료</p>
+        <div class="tag-list">
+          <span class="tag">국민임대</span>
+        </div>
+      </div>
+    </a>
+
+    <!-- Card 7 -->
+    <a class="listing-card" href="#">
+      <div class="card-image-wrap">
+        <div class="card-image-placeholder">🏢</div>
+        <span class="status-badge open">모집중</span>
+        <button class="heart-btn" onclick="event.preventDefault()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" filter="drop-shadow(0 1px 2px rgba(0,0,0,0.5))"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+        </button>
+      </div>
+      <div class="card-info">
+        <p class="card-provider">LH · 경기도 화성시</p>
+        <h3 class="card-title">화성 동탄2 매입임대주택 입주자 모집공고</h3>
+        <p class="card-price">보증금 <strong>1,800만원</strong> / 월세 <strong>210,000원</strong></p>
+        <p class="card-deadline">마감 D-30 · 5월 8일</p>
+        <div class="tag-list">
+          <span class="tag">매입임대</span>
+          <span class="tag" style="background:#fff7ed;color:#c2410c;border-color:rgba(194,65,12,0.2)">고령자</span>
+        </div>
+      </div>
+    </a>
+
+    <!-- Card 8 -->
+    <a class="listing-card" href="#">
+      <div class="card-image-wrap">
+        <div class="card-image-placeholder">🏗️</div>
+        <span class="status-badge open">모집중</span>
+        <button class="heart-btn" onclick="event.preventDefault()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" filter="drop-shadow(0 1px 2px rgba(0,0,0,0.5))"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+        </button>
+      </div>
+      <div class="card-info">
+        <p class="card-provider">LH · 경기도 평택시</p>
+        <h3 class="card-title">평택 고덕신도시 국민임대주택 예비입주자 모집공고</h3>
+        <p class="card-price">보증금 <strong>9,240만원</strong> / 월세 <strong>188,000원</strong></p>
+        <p class="card-deadline">마감 D-12 · 4월 20일</p>
+        <div class="tag-list">
+          <span class="tag newlywed">신혼부부</span>
+          <span class="tag youth">청년</span>
+        </div>
+      </div>
+    </a>
+
+  </div>
+
+  <!-- PAGINATION -->
+  <div class="pagination">
+    <button class="page-btn nav">‹</button>
+    <button class="page-btn active">1</button>
+    <button class="page-btn">2</button>
+    <button class="page-btn">3</button>
+    <button class="page-btn nav">›</button>
+  </div>
+</div>
+
+<!-- FOOTER -->
+<footer style="border-top:1px solid rgba(0,0,0,0.08);padding:32px 24px;background:var(--gray-surface)">
+  <div style="max-width:1280px;margin:0 auto;display:flex;gap:48px;flex-wrap:wrap">
+    <div>
+      <p style="font-size:12px;font-weight:600;color:var(--near-black);margin-bottom:12px">서비스</p>
+      <p style="font-size:13px;color:var(--gray-secondary);margin-bottom:8px">공고 목록</p>
+      <p style="font-size:13px;color:var(--gray-secondary);margin-bottom:8px">추천 공고</p>
+      <p style="font-size:13px;color:var(--gray-secondary)">알림 설정</p>
+    </div>
+    <div>
+      <p style="font-size:12px;font-weight:600;color:var(--near-black);margin-bottom:12px">지원</p>
+      <p style="font-size:13px;color:var(--gray-secondary);margin-bottom:8px">공급유형 안내</p>
+      <p style="font-size:13px;color:var(--gray-secondary);margin-bottom:8px">자격 확인</p>
+      <p style="font-size:13px;color:var(--gray-secondary)">자주 묻는 질문</p>
+    </div>
+    <div style="margin-left:auto">
+      <p style="font-size:12px;color:var(--gray-secondary)">© 2026 집구해. 공공임대주택 정보 플랫폼</p>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>

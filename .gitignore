@@ -25,3 +25,11 @@ demo/demo/src/main/resources/application.properties
 demo/demo 백업.zip
 CLAUDE.md
 .claude/settings.local.json
+.omc
+.omx/
+**/.omx/
+**/.omc/
+
+# Local runtime logs
+subscrition/backend.err.log
+subscrition/backend.out.log
