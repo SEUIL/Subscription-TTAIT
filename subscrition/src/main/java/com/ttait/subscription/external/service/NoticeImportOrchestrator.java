@@ -60,6 +60,11 @@ public class NoticeImportOrchestrator {
             }
 
             for (JsonNode item : dsList) {
+                String uppAisTpCd = item.path("UPP_AIS_TP_CD").asText("");
+                if ("01".equals(uppAisTpCd)) { // 토지(01): 주택 서비스 대상 아님
+                    log.debug("Skipping land notice panId={}", item.path("PAN_ID").asText());
+                    continue;
+                }
                 try {
                     processLhItem(item);
                     imported.incrementAndGet();

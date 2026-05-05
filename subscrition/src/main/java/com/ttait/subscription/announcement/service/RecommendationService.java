@@ -178,6 +178,7 @@ public class RecommendationService {
                 announcement.getApplicationStartDate(),
                 announcement.getApplicationEndDate(),
                 announcement.getNoticeStatus().name(),
+                announcement.getSourceNoticeUrl(),
                 score,
                 reasons
         );

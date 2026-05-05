@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>청약따잇 맞춤 공고 알림</title>
+</head>
+<body style="margin:0;padding:0;background:#f5f6fa;font-family:'Apple SD Gothic Neo','Malgun Gothic',sans-serif;">
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#f5f6fa;padding:32px 0;">
+  <tr>
+    <td align="center">
+      <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+
+        <!-- Header -->
+        <tr>
+          <td style="background:#3B82F6;padding:28px 32px;">
+            <p style="margin:0;color:#ffffff;font-size:22px;font-weight:700;">📬 청약따잇</p>
+            <p style="margin:8px 0 0;color:#BFDBFE;font-size:14px;">오늘의 맞춤 공고가 도착했어요</p>
+          </td>
+        </tr>
+
+        <!-- Greeting -->
+        <tr>
+          <td style="padding:28px 32px 12px;">
+            <p style="margin:0;font-size:16px;color:#1e293b;">
+              안녕하세요, <strong th:text="${userName}">홍길동</strong>님!<br>
+              <span style="color:#64748b;font-size:14px;">회원님의 조건에 맞는 공고 <strong th:text="${#lists.size(items)}">0</strong>건을 찾았어요.</span>
+            </p>
+          </td>
+        </tr>
+
+        <!-- Announcement Cards -->
+        <tr th:each="item : ${items}">
+          <td style="padding:12px 32px;">
+            <table width="100%" cellpadding="0" cellspacing="0"
+                   style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;overflow:hidden;">
+              <tr>
+                <td style="padding:20px;">
+                  <!-- Title Row -->
+                  <p style="margin:0 0 4px;font-size:15px;font-weight:700;color:#1e293b;" th:text="${item.noticeName}">공고명</p>
+                  <p style="margin:0 0 12px;font-size:12px;color:#94a3b8;" th:text="${item.providerName}">공급기관</p>
+
+                  <!-- Info Grid -->
+                  <table width="100%" cellpadding="0" cellspacing="0">
+                    <tr>
+                      <td width="50%" style="padding-bottom:6px;">
+                        <span style="font-size:11px;color:#94a3b8;">📍 지역</span><br>
+                        <span style="font-size:13px;color:#334155;"
+                          th:text="${item.regionLevel1 + ' ' + (item.regionLevel2 != null ? item.regionLevel2 : '')}">서울 강남구</span>
+                      </td>
+                      <td width="50%" style="padding-bottom:6px;">
+                        <span style="font-size:11px;color:#94a3b8;">📅 마감일</span><br>
+                        <span style="font-size:13px;color:#334155;"
+                          th:text="${item.applicationEndDate != null ? item.applicationEndDate : '미정'}">2026-05-15</span>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td width="50%" style="padding-bottom:6px;" th:if="${item.depositAmount != null}">
+                        <span style="font-size:11px;color:#94a3b8;">💰 보증금</span><br>
+                        <span style="font-size:13px;color:#334155;" th:text="${#numbers.formatInteger(item.depositAmount, 1, 'COMMA') + '만원'}">500만원</span>
+                      </td>
+                      <td width="50%" style="padding-bottom:6px;" th:if="${item.monthlyRentAmount != null}">
+                        <span style="font-size:11px;color:#94a3b8;">🏠 월세</span><br>
+                        <span style="font-size:13px;color:#334155;" th:text="${#numbers.formatInteger(item.monthlyRentAmount, 1, 'COMMA') + '만원'}">30만원</span>
+                      </td>
+                    </tr>
+                  </table>
+
+                  <!-- Match Reasons -->
+                  <p style="margin:10px 0 4px;font-size:11px;color:#94a3b8;">✅ 추천 이유</p>
+                  <div th:each="reason,iter : ${item.matchReasons}" th:if="${iter.index < 2}">
+                    <span style="display:inline-block;background:#EFF6FF;color:#2563EB;font-size:11px;padding:2px 8px;border-radius:20px;margin:2px 2px 0 0;"
+                      th:text="${reason}">이유</span>
+                  </div>
+
+                  <!-- CTA Button -->
+                  <div style="margin-top:16px;" th:if="${item.sourceNoticeUrl != null}">
+                    <a th:href="${item.sourceNoticeUrl}"
+                       style="display:inline-block;background:#3B82F6;color:#ffffff;text-decoration:none;font-size:13px;font-weight:600;padding:10px 20px;border-radius:8px;">
+                      공고 바로보기 →
+                    </a>
+                  </div>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+
+        <!-- Footer -->
+        <tr>
+          <td style="padding:24px 32px;border-top:1px solid #e2e8f0;margin-top:8px;">
+            <p style="margin:0;font-size:12px;color:#94a3b8;line-height:1.6;">
+              본 메일은 청약따잇 맞춤 알리미 서비스에 의해 자동 발송되었습니다.<br>
+              수신을 원하지 않으시면 서비스 내 알림 설정에서 변경하실 수 있습니다.
+            </p>
+          </td>
+        </tr>
+
+      </table>
+    </td>
+  </tr>
+</table>
+</body>
+</html>

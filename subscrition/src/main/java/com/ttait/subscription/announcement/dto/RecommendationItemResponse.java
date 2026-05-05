@@ -18,6 +18,7 @@ public record RecommendationItemResponse(
         LocalDate applicationStartDate,
         LocalDate applicationEndDate,
         String noticeStatus,
+        String sourceNoticeUrl,
         int matchScore,
         List<String> matchReasons
 ) {
