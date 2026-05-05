@@ -220,4 +220,10 @@ public class Announcement extends SoftDeleteBaseEntity {
         if (depositAmountManwon != null) this.depositAmount = depositAmountManwon;
         if (monthlyRentAmountManwon != null) this.monthlyRentAmount = monthlyRentAmountManwon;
     }
+
+    public void updateApplicationStartDate(LocalDate startDate) {
+        if (startDate != null && this.applicationStartDate == null) {
+            this.applicationStartDate = startDate;
+        }
+    }
 }

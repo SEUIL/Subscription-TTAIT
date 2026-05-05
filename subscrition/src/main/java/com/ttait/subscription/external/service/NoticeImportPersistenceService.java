@@ -137,6 +137,10 @@ public class NoticeImportPersistenceService {
                                     .announcement(announcement)
                                     .build());
 
+                    LocalDate startDate = DateParsers.parseDate(text(schedule, "SBSC_ACP_ST_DT"));
+                    announcement.updateApplicationStartDate(startDate);
+                    announcementRepository.save(announcement);
+
                     detail.updateFromImport(
                             text(schedule, "ACP_DTTM"),
                             DateParsers.parseDate(text(schedule, "PPR_ACP_ST_DT")),

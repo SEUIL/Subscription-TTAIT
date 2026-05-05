@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>청약따잇 마감 임박 알림</title>
+</head>
+<body style="margin:0;padding:0;background:#f5f6fa;font-family:'Apple SD Gothic Neo','Malgun Gothic',sans-serif;">
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#f5f6fa;padding:32px 0;">
+  <tr>
+    <td align="center">
+      <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+
+        <!-- Header -->
+        <tr>
+          <td style="background:#EF4444;padding:28px 32px;">
+            <p style="margin:0;color:#ffffff;font-size:22px;font-weight:700;">⏰ 청약따잇</p>
+            <p style="margin:8px 0 0;color:#FEE2E2;font-size:14px;">즐겨찾기 공고 마감이 임박했어요!</p>
+          </td>
+        </tr>
+
+        <!-- D-Day Banner -->
+        <tr>
+          <td style="padding:24px 32px 8px;text-align:center;">
+            <div style="display:inline-block;background:#FEF2F2;border:2px solid #EF4444;border-radius:50px;padding:8px 28px;">
+              <span style="font-size:28px;font-weight:800;color:#EF4444;" th:text="${dDayLabel}">D-3</span>
+            </div>
+            <p style="margin:12px 0 0;font-size:15px;color:#1e293b;">
+              <strong th:text="${userName}">홍길동</strong>님, 즐겨찾기한 공고 마감이 <strong th:text="${dDayLabel}">D-3</strong>이에요.
+            </p>
+          </td>
+        </tr>
+
+        <!-- Announcement Card -->
+        <tr>
+          <td style="padding:12px 32px 24px;">
+            <table width="100%" cellpadding="0" cellspacing="0"
+                   style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;overflow:hidden;">
+              <tr>
+                <td style="padding:20px;">
+                  <p style="margin:0 0 4px;font-size:16px;font-weight:700;color:#1e293b;" th:text="${announcement.noticeName}">공고명</p>
+                  <p style="margin:0 0 14px;font-size:12px;color:#94a3b8;" th:text="${announcement.providerName}">공급기관</p>
+
+                  <table width="100%" cellpadding="0" cellspacing="0">
+                    <tr>
+                      <td width="50%" style="padding-bottom:8px;">
+                        <span style="font-size:11px;color:#94a3b8;">📍 지역</span><br>
+                        <span style="font-size:13px;color:#334155;"
+                          th:text="${announcement.regionLevel1 + ' ' + (announcement.regionLevel2 != null ? announcement.regionLevel2 : '')}">서울 강남구</span>
+                      </td>
+                      <td width="50%" style="padding-bottom:8px;">
+                        <span style="font-size:11px;color:#94a3b8;">📅 마감일</span><br>
+                        <span style="font-size:13px;font-weight:700;color:#EF4444;"
+                          th:text="${announcement.applicationEndDate}">2026-05-10</span>
+                      </td>
+                    </tr>
+                    <tr th:if="${announcement.depositAmount != null}">
+                      <td width="50%">
+                        <span style="font-size:11px;color:#94a3b8;">💰 보증금</span><br>
+                        <span style="font-size:13px;color:#334155;"
+                          th:text="${#numbers.formatInteger(announcement.depositAmount, 1, 'COMMA') + '만원'}">500만원</span>
+                      </td>
+                      <td width="50%" th:if="${announcement.monthlyRentAmount != null}">
+                        <span style="font-size:11px;color:#94a3b8;">🏠 월세</span><br>
+                        <span style="font-size:13px;color:#334155;"
+                          th:text="${#numbers.formatInteger(announcement.monthlyRentAmount, 1, 'COMMA') + '만원'}">30만원</span>
+                      </td>
+                    </tr>
+                  </table>
+
+                  <div style="margin-top:18px;" th:if="${announcement.sourceNoticeUrl != null}">
+                    <a th:href="${announcement.sourceNoticeUrl}"
+                       style="display:inline-block;background:#EF4444;color:#ffffff;text-decoration:none;font-size:13px;font-weight:600;padding:10px 20px;border-radius:8px;">
+                      지금 신청하러 가기 →
+                    </a>
+                  </div>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+
+        <!-- Footer -->
+        <tr>
+          <td style="padding:20px 32px;border-top:1px solid #e2e8f0;">
+            <p style="margin:0;font-size:12px;color:#94a3b8;line-height:1.6;">
+              본 메일은 청약따잇 즐겨찾기 마감 알리미 서비스에 의해 자동 발송되었습니다.<br>
+              수신을 원하지 않으시면 서비스 내 알림 설정에서 변경하실 수 있습니다.
+            </p>
+          </td>
+        </tr>
+
+      </table>
+    </td>
+  </tr>
+</table>
+</body>
+</html>
