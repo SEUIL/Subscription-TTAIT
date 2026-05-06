@@ -176,7 +176,11 @@ public class NoticeImportPersistenceService {
                                 valueOf(pdfResult.depositMonthlyRent()),
                                 pdfResult.eligibility() != null ? pdfResult.eligibility().incomeAssetCriteriaRaw() : null,
                                 valueOf(pdfResult.contact()),
-                                buildEligibilityText(pdfResult)
+                                buildEligibilityText(pdfResult),
+                                pdfResult.noticeType(),
+                                valueOf(pdfResult.salePriceRaw()),
+                                serializeSchedules(pdfResult.scheduleDetails()),
+                                valueOf(pdfResult.importantNotes())
                         );
                         detail.updateEligibilityRaw(eligibilityRawText);
 
@@ -286,8 +290,17 @@ public class NoticeImportPersistenceService {
     }
 
     private String buildEligibilityText(PdfParseResult result) {
-        // TODO: announcement_eligibility 구현 시 OpenAI 프롬프트에 eligibility 필드 추가 후 채울 것
         return null;
+    }
+
+    private String serializeSchedules(List<PdfParseResult.ScheduleItem> items) {
+        if (items == null || items.isEmpty()) return null;
+        try {
+            return objectMapper.writeValueAsString(items);
+        } catch (JsonProcessingException e) {
+            log.warn("Failed to serialize scheduleDetails", e);
+            return null;
+        }
     }
 
     private void append(StringBuilder sb, String text) {
