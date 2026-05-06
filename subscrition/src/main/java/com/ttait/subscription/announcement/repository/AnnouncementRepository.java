@@ -33,6 +33,8 @@ public interface AnnouncementRepository extends JpaRepository<Announcement, Long
     @Query("select distinct a.regionLevel2 from Announcement a where a.deleted = false and a.merged = false and a.regionLevel2 is not null and a.regionLevel2 <> '' order by a.regionLevel2")
     List<String> findDistinctRegionLevel2();
 
+    List<Announcement> findByDeletedFalseAndMergedFalseAndRegionLevel1IgnoreCase(String regionLevel1);
+
     @Query("select distinct a.supplyTypeNormalized from Announcement a where a.deleted = false and a.merged = false and a.supplyTypeNormalized is not null and a.supplyTypeNormalized <> '' order by a.supplyTypeNormalized")
     List<String> findDistinctSupplyTypes();
 

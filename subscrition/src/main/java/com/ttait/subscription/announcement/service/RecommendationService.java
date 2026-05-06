@@ -9,6 +9,7 @@ import com.ttait.subscription.announcement.repository.AnnouncementCategoryReposi
 import com.ttait.subscription.announcement.repository.AnnouncementEligibilityRepository;
 import com.ttait.subscription.announcement.repository.AnnouncementRepository;
 import com.ttait.subscription.common.exception.ApiException;
+import com.ttait.subscription.external.support.AnnouncementNormalizer;
 import com.ttait.subscription.user.domain.UserCategory;
 import com.ttait.subscription.user.domain.UserProfile;
 import com.ttait.subscription.user.domain.enums.CategoryCode;
@@ -40,17 +41,20 @@ public class RecommendationService {
     private final AnnouncementEligibilityRepository announcementEligibilityRepository;
     private final UserProfileRepository userProfileRepository;
     private final UserCategoryRepository userCategoryRepository;
+    private final AnnouncementNormalizer announcementNormalizer;
 
     public RecommendationService(AnnouncementRepository announcementRepository,
                                  AnnouncementCategoryRepository announcementCategoryRepository,
                                  AnnouncementEligibilityRepository announcementEligibilityRepository,
                                  UserProfileRepository userProfileRepository,
-                                 UserCategoryRepository userCategoryRepository) {
+                                 UserCategoryRepository userCategoryRepository,
+                                 AnnouncementNormalizer announcementNormalizer) {
         this.announcementRepository = announcementRepository;
         this.announcementCategoryRepository = announcementCategoryRepository;
         this.announcementEligibilityRepository = announcementEligibilityRepository;
         this.userProfileRepository = userProfileRepository;
         this.userCategoryRepository = userCategoryRepository;
+        this.announcementNormalizer = announcementNormalizer;
     }
 
     public Page<RecommendationItemResponse> getRecommendations(Long userId, Pageable pageable) {
@@ -117,11 +121,11 @@ public class RecommendationService {
             score += 20;
             reasons.add("희망 지역과 일치");
         }
-        if (equalsIgnoreCase(profile.getPreferredRegionLevel2(), announcement.getRegionLevel2())) {
+        if (equalsIgnoreCase(profile.getPreferredRegionLevel2(), resolveRegionLevel2(announcement))) {
             score += 12;
             reasons.add("세부 희망 지역과 일치");
         }
-        if (equalsIgnoreCase(profile.getPreferredHouseType(), announcement.getHouseTypeNormalized())) {
+        if (equalsIgnoreCase(profile.getPreferredHouseType(), resolveHouseType(announcement))) {
             score += 10;
             reasons.add("희망 주택 유형과 일치");
         }
@@ -168,9 +172,9 @@ public class RecommendationService {
                 announcement.getNoticeName(),
                 announcement.getProviderName(),
                 announcement.getSupplyTypeNormalized(),
-                announcement.getHouseTypeNormalized(),
+                resolveHouseType(announcement),
                 announcement.getRegionLevel1(),
-                announcement.getRegionLevel2(),
+                resolveRegionLevel2(announcement),
                 announcement.getFullAddress(),
                 announcement.getComplexName(),
                 announcement.getDepositAmount(),
@@ -298,5 +302,77 @@ public class RecommendationService {
 
     private boolean equalsIgnoreCase(String left, String right) {
         return StringUtils.hasText(left) && StringUtils.hasText(right) && left.equalsIgnoreCase(right);
+    }
+
+    private String resolveHouseType(Announcement announcement) {
+        if (StringUtils.hasText(announcement.getHouseTypeRaw())) {
+            String normalizedFromRaw = announcementNormalizer.normalizeHouseType(announcement.getHouseTypeRaw());
+            if (StringUtils.hasText(normalizedFromRaw)) {
+                return normalizedFromRaw;
+            }
+        }
+
+        return StringUtils.hasText(announcement.getHouseTypeNormalized()) ? announcement.getHouseTypeNormalized() : null;
+    }
+
+    private String resolveRegionLevel2(Announcement announcement) {
+        if (StringUtils.hasText(announcement.getRegionLevel2())) {
+            String extracted = extractRegionLevel2Token(announcement.getRegionLevel2(), announcement.getRegionLevel1());
+            if (StringUtils.hasText(extracted)) {
+                return extracted;
+            }
+        }
+
+        return extractRegionLevel2Token(announcement.getFullAddress(), announcement.getRegionLevel1());
+    }
+
+    private String extractRegionLevel2Token(String source, String regionLevel1) {
+        if (!StringUtils.hasText(source)) {
+            return null;
+        }
+
+        String normalizedSource = normalizeWhitespace(source);
+        String[] tokens = normalizedSource.split(" ");
+        int startIndex = 0;
+
+        if (StringUtils.hasText(regionLevel1)) {
+            String normalizedRegionLevel1 = normalizeRegionToken(regionLevel1);
+            for (int index = 0; index < tokens.length; index++) {
+                if (normalizedRegionLevel1.equals(normalizeRegionToken(tokens[index]))) {
+                    startIndex = index + 1;
+                    break;
+                }
+            }
+        }
+
+        for (int index = startIndex; index < tokens.length; index++) {
+            String token = sanitizeRegionToken(tokens[index]);
+            if (isLevel2RegionToken(token)) {
+                return token;
+            }
+        }
+
+        String fallback = sanitizeRegionToken(normalizedSource);
+        return isLevel2RegionToken(fallback) ? fallback : null;
+    }
+
+    private String normalizeRegionToken(String value) {
+        return sanitizeRegionToken(value).toLowerCase();
+    }
+
+    private String sanitizeRegionToken(String value) {
+        if (!StringUtils.hasText(value)) {
+            return "";
+        }
+        return normalizeWhitespace(value).replaceAll("^[\\p{Punct}]+|[\\p{Punct}]+$", "");
+    }
+
+    private String normalizeWhitespace(String value) {
+        return value == null ? "" : value.trim().replaceAll("\\s+", " ");
+    }
+
+    private boolean isLevel2RegionToken(String token) {
+        return StringUtils.hasText(token)
+                && (token.endsWith("시") || token.endsWith("군") || token.endsWith("구"));
     }
 }
