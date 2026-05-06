@@ -13,6 +13,7 @@ import com.ttait.subscription.announcement.repository.AnnouncementCategoryReposi
 import com.ttait.subscription.announcement.repository.AnnouncementDetailRepository;
 import com.ttait.subscription.announcement.repository.AnnouncementRepository;
 import com.ttait.subscription.common.exception.ApiException;
+import com.ttait.subscription.external.support.AnnouncementNormalizer;
 import com.ttait.subscription.user.domain.enums.CategoryCode;
 import java.util.Collection;
 import java.util.Comparator;
@@ -21,6 +22,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -37,13 +39,16 @@ public class AnnouncementQueryService {
     private final AnnouncementRepository announcementRepository;
     private final AnnouncementDetailRepository announcementDetailRepository;
     private final AnnouncementCategoryRepository announcementCategoryRepository;
+    private final AnnouncementNormalizer announcementNormalizer;
 
     public AnnouncementQueryService(AnnouncementRepository announcementRepository,
                                     AnnouncementDetailRepository announcementDetailRepository,
-                                    AnnouncementCategoryRepository announcementCategoryRepository) {
+                                    AnnouncementCategoryRepository announcementCategoryRepository,
+                                    AnnouncementNormalizer announcementNormalizer) {
         this.announcementRepository = announcementRepository;
         this.announcementDetailRepository = announcementDetailRepository;
         this.announcementCategoryRepository = announcementCategoryRepository;
+        this.announcementNormalizer = announcementNormalizer;
     }
 
     public Page<AnnouncementListItemResponse> getAnnouncements(String regionLevel1,
@@ -102,8 +107,19 @@ public class AnnouncementQueryService {
         return new FilterOptionResponse(announcementRepository.findDistinctRegionLevel1());
     }
 
-    public FilterOptionResponse regionLevel2Options() {
-        return new FilterOptionResponse(announcementRepository.findDistinctRegionLevel2());
+    public FilterOptionResponse regionLevel2Options(String regionLevel1) {
+        List<Announcement> announcements = StringUtils.hasText(regionLevel1)
+                ? announcementRepository.findByDeletedFalseAndMergedFalseAndRegionLevel1IgnoreCase(regionLevel1)
+                : announcementRepository.findByDeletedFalseAndMergedFalse(Pageable.unpaged()).getContent();
+
+        List<String> items = announcements.stream()
+                .map(this::resolveRegionLevel2)
+                .filter(StringUtils::hasText)
+                .distinct()
+                .sorted(String.CASE_INSENSITIVE_ORDER)
+                .toList();
+
+        return new FilterOptionResponse(items);
     }
 
     public FilterOptionResponse supplyTypeOptions() {
@@ -111,7 +127,15 @@ public class AnnouncementQueryService {
     }
 
     public FilterOptionResponse houseTypeOptions() {
-        return new FilterOptionResponse(announcementRepository.findDistinctHouseTypes());
+        List<String> items = announcementRepository.findByDeletedFalseAndMergedFalse(Pageable.unpaged())
+                .getContent()
+                .stream()
+                .map(this::resolveHouseType)
+                .filter(StringUtils::hasText)
+                .distinct()
+                .sorted(String.CASE_INSENSITIVE_ORDER)
+                .toList();
+        return new FilterOptionResponse(items);
     }
 
     public FilterOptionResponse providerOptions() {
@@ -130,14 +154,16 @@ public class AnnouncementQueryService {
     }
 
     private AnnouncementListItemResponse toListItem(Announcement announcement) {
+        String resolvedRegionLevel2 = resolveRegionLevel2(announcement);
+        String resolvedHouseType = resolveHouseType(announcement);
         return new AnnouncementListItemResponse(
                 announcement.getId(),
                 announcement.getNoticeName(),
                 announcement.getProviderName(),
                 announcement.getSupplyTypeNormalized(),
-                announcement.getHouseTypeNormalized(),
+                resolvedHouseType,
                 announcement.getRegionLevel1(),
-                announcement.getRegionLevel2(),
+                resolvedRegionLevel2,
                 announcement.getFullAddress(),
                 announcement.getComplexName(),
                 announcement.getDepositAmount(),
@@ -159,7 +185,7 @@ public class AnnouncementQueryService {
                 announcement.getApplicationEndDate(),
                 announcement.getWinnerAnnouncementDate(),
                 announcement.getSupplyTypeNormalized(),
-                announcement.getHouseTypeNormalized(),
+                resolveHouseType(announcement),
                 announcement.getComplexName(),
                 announcement.getFullAddress(),
                 announcement.getDepositAmount(),
@@ -199,7 +225,11 @@ public class AnnouncementQueryService {
     }
 
     private boolean matchesRegionLevel2(Announcement announcement, String regionLevel2) {
-        return !StringUtils.hasText(regionLevel2) || regionLevel2.equalsIgnoreCase(announcement.getRegionLevel2());
+        if (!StringUtils.hasText(regionLevel2)) {
+            return true;
+        }
+
+        return Objects.equals(normalizeRegionToken(regionLevel2), normalizeRegionToken(resolveRegionLevel2(announcement)));
     }
 
     private boolean matchesSupplyType(Announcement announcement, String supplyType) {
@@ -207,7 +237,7 @@ public class AnnouncementQueryService {
     }
 
     private boolean matchesHouseType(Announcement announcement, String houseType) {
-        return !StringUtils.hasText(houseType) || houseType.equalsIgnoreCase(announcement.getHouseTypeNormalized());
+        return !StringUtils.hasText(houseType) || houseType.equalsIgnoreCase(resolveHouseType(announcement));
     }
 
     private boolean matchesProvider(Announcement announcement, String provider) {
@@ -286,9 +316,20 @@ public class AnnouncementQueryService {
                 safeLower(announcement.getSupplyTypeRaw()),
                 safeLower(announcement.getSupplyTypeNormalized()),
                 safeLower(announcement.getHouseTypeRaw()),
-                safeLower(announcement.getHouseTypeNormalized()),
+                safeLower(resolveHouseType(announcement)),
                 safeLower(announcement.getProviderName()),
                 safeLower(announcement.getFullAddress()));
+    }
+
+    private String resolveHouseType(Announcement announcement) {
+        if (StringUtils.hasText(announcement.getHouseTypeRaw())) {
+            String normalizedFromRaw = announcementNormalizer.normalizeHouseType(announcement.getHouseTypeRaw());
+            if (StringUtils.hasText(normalizedFromRaw)) {
+                return normalizedFromRaw;
+            }
+        }
+
+        return StringUtils.hasText(announcement.getHouseTypeNormalized()) ? announcement.getHouseTypeNormalized() : null;
     }
 
     private boolean containsValue(String value, String keyword) {
@@ -306,5 +347,69 @@ public class AnnouncementQueryService {
             }
         }
         return false;
+    }
+
+    private String resolveRegionLevel2(Announcement announcement) {
+        String extractedFromRegion = extractRegionLevel2Token(announcement.getRegionLevel2(), announcement.getRegionLevel1());
+        if (StringUtils.hasText(extractedFromRegion)) {
+            return extractedFromRegion;
+        }
+        return extractRegionLevel2Token(announcement.getFullAddress(), announcement.getRegionLevel1());
+    }
+
+    private String extractRegionLevel2Token(String source, String regionLevel1) {
+        if (!StringUtils.hasText(source)) {
+            return null;
+        }
+
+        String normalizedSource = normalizeWhitespace(source);
+        String[] tokens = normalizedSource.split(" ");
+        if (tokens.length == 0) {
+            return null;
+        }
+
+        int startIndex = 0;
+        if (StringUtils.hasText(regionLevel1)) {
+            String normalizedRegionLevel1 = normalizeRegionToken(regionLevel1);
+            for (int index = 0; index < tokens.length; index++) {
+                if (normalizedRegionLevel1.equals(normalizeRegionToken(tokens[index]))) {
+                    startIndex = index + 1;
+                    break;
+                }
+            }
+        }
+
+        for (int index = startIndex; index < tokens.length; index++) {
+            String token = sanitizeRegionToken(tokens[index]);
+            if (isLevel2RegionToken(token)) {
+                return token;
+            }
+        }
+
+        String fallback = sanitizeRegionToken(normalizedSource);
+        return isLevel2RegionToken(fallback) ? fallback : null;
+    }
+
+    private String normalizeRegionToken(String value) {
+        return sanitizeRegionToken(value).toLowerCase(Locale.ROOT);
+    }
+
+    private String sanitizeRegionToken(String value) {
+        if (!StringUtils.hasText(value)) {
+            return "";
+        }
+        return normalizeWhitespace(value).replaceAll("^[\\p{Punct}]+|[\\p{Punct}]+$", "");
+    }
+
+    private String normalizeWhitespace(String value) {
+        return value == null ? "" : value.trim().replaceAll("\\s+", " ");
+    }
+
+    private boolean isLevel2RegionToken(String token) {
+        if (!StringUtils.hasText(token)) {
+            return false;
+        }
+
+        return token.endsWith("시") || token.endsWith("군") || token.endsWith("구");
     }
 }
