@@ -4,6 +4,7 @@ public record AuthResponse(
         Long userId,
         String loginId,
         String accessToken,
-        boolean profileCompleted
+        boolean profileCompleted,
+        String role
 ) {
 }

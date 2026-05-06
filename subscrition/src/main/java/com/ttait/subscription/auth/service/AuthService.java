@@ -44,7 +44,7 @@ public class AuthService {
                 .role(Role.USER)
                 .build());
         String token = jwtTokenProvider.generateToken(user.getId(), user.getLoginId(), user.getRole());
-        return new AuthResponse(user.getId(), user.getLoginId(), token, user.isProfileCompleted());
+        return new AuthResponse(user.getId(), user.getLoginId(), token, user.isProfileCompleted(), user.getRole().name());
     }
 
     @Transactional(readOnly = true)
@@ -55,6 +55,6 @@ public class AuthService {
             throw new ApiException(HttpStatus.UNAUTHORIZED, "invalid credentials");
         }
         String token = jwtTokenProvider.generateToken(user.getId(), user.getLoginId(), user.getRole());
-        return new AuthResponse(user.getId(), user.getLoginId(), token, user.isProfileCompleted());
+        return new AuthResponse(user.getId(), user.getLoginId(), token, user.isProfileCompleted(), user.getRole().name());
     }
 }

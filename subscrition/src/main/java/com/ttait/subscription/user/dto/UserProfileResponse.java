@@ -9,6 +9,7 @@ public record UserProfileResponse(
         String loginId,
         String email,
         String phone,
+        String role,
         boolean profileCompleted,
         Integer age,
         MaritalStatus maritalStatus,

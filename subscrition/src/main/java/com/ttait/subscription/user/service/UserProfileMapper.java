@@ -17,6 +17,7 @@ public final class UserProfileMapper {
                 user.getLoginId(),
                 user.getEmail(),
                 user.getPhone(),
+                user.getRole().name(),
                 user.isProfileCompleted(),
                 profile != null ? profile.getAge() : null,
                 profile != null ? profile.getMaritalStatus() : null,
