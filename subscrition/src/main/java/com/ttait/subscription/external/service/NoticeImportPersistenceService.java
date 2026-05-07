@@ -139,6 +139,14 @@ public class NoticeImportPersistenceService {
 
                     LocalDate startDate = DateParsers.parseDate(text(schedule, "SBSC_ACP_ST_DT"));
                     announcement.updateApplicationStartDate(startDate);
+
+                    String addr = text(site, "LGDN_ADR");
+                    String lccNm = text(site, "LCC_NT_NM");
+                    String complexNm = lccNm != null ? lccNm : text(site, "SBD_NM"); // 상가는 SBD_NM 사용
+                    if (addr == null && "전국".equals(announcement.getRegionLevel1())) {
+                        addr = "전국공고(직접확인필요)";
+                    }
+                    announcement.updateAddress(addr, complexNm);
                     announcementRepository.save(announcement);
 
                     detail.updateFromImport(
@@ -190,10 +198,28 @@ public class NoticeImportPersistenceService {
                         }
                         // deposit / monthly_rent 업데이트
                         announcement.updateDepositAndRent(pdfResult.depositAmountManwon(), pdfResult.monthlyRentAmountManwon());
+                        // house_type_raw: LH API에 없으므로 PDF 파싱 결과로 채움
+                        if (pdfResult.houseType() != null) announcement.updateHouseType(pdfResult.houseType());
+                        // address 보완: API dsSbd에서 못 채운 경우(상가/집주인임대) PDF 주소로 보완
+                        if (pdfResult.address() != null && announcement.getFullAddress() == null) {
+                            announcement.updateAddress(pdfResult.address(), null);
+                        }
                         announcementRepository.save(announcement);
 
                         // eligibility 저장
                         saveEligibility(announcement, pdfResult);
+                    } else {
+                        // PDF 파싱 실패 시에도 PENDING 상태로 검수 큐에 등록
+                        // 관리자가 REIMPORT 액션으로 재파싱 가능
+                        announcementEligibilityRepository.findByAnnouncementId(announcement.getId())
+                                .ifPresentOrElse(
+                                        existing -> {}, // 이미 존재하면 건드리지 않음
+                                        () -> announcementEligibilityRepository.save(
+                                                AnnouncementEligibility.builder()
+                                                        .announcement(announcement)
+                                                        .build()
+                                        )
+                                );
                     }
 
                     announcementDetailRepository.save(detail);

@@ -18,7 +18,9 @@ public record PdfParseResult(
         Field salePriceRaw,                  // 분양가 원문
         List<ScheduleItem> scheduleDetails,  // 복수 일정 배열
         Field importantNotes,                // 유의사항 원문
-        Eligibility eligibility              // 자격 조건
+        Eligibility eligibility,             // 자격 조건
+        String houseType,                    // 주택 유형 (아파트/빌라/다가구 등, PDF에서 파싱)
+        String address                       // 공고 주소 (API에서 못 채운 경우 보완용)
 ) {
     @JsonIgnoreProperties(ignoreUnknown = true)
     public record ScheduleItem(

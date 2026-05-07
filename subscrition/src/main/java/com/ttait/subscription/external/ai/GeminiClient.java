@@ -1,5 +1,6 @@
 package com.ttait.subscription.external.ai;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ttait.subscription.external.ai.dto.PdfParseResult;
@@ -11,6 +12,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestClient;
 
 @Component
@@ -20,6 +22,8 @@ public class GeminiClient {
     private static final Logger log = LoggerFactory.getLogger(GeminiClient.class);
 
     private static final String BASE_URL = "https://generativelanguage.googleapis.com/v1beta";
+    private static final int MAX_RETRIES = 3;
+    private static final long INITIAL_RETRY_DELAY_MS = 30_000; // Gemini 응답의 "retry in ~21s" 기준 여유치
 
     private static final String SYSTEM_PROMPT = """
             You extract housing announcement info from Korean public housing notice PDFs.
@@ -58,7 +62,9 @@ public class GeminiClient {
                 "elderlyRawText": string|null,
                 "eligibilityRaw": string|null,
                 "specialSupplyRaw": string|null
-              }
+              },
+              "houseType": string|null,
+              "address": string|null
             }
             Rules:
             - Keep Korean text as-is.
@@ -78,6 +84,8 @@ public class GeminiClient {
             - elderlyRequired: true if targeting 고령자/만65세이상. null if not mentioned.
             - eligibilityRaw: verbatim full text of the eligibility/qualification section (신청자격, 입주자격 등). null if not found.
             - specialSupplyRaw: verbatim text of 특별공급/우선공급 conditions. null if not present.
+            - houseType: extract the housing type (주택유형) from the notice. Use Korean as-is (e.g. "아파트", "빌라", "다가구주택", "연립주택", "다세대주택", "오피스텔", "상가", "국민임대주택" etc.). null if not found.
+            - address: extract the full street address (도로명주소 or 지번주소) of the housing complex from the notice. Korean as-is. null if not found or if the notice covers multiple/nationwide locations.
             """;
 
     private final RestClient restClient;
@@ -119,21 +127,47 @@ public class GeminiClient {
     }
 
     private PdfParseResult callGemini(Map<String, Object> body, String mode, int size) {
-        try {
-            JsonNode response = restClient.post()
-                    .uri(BASE_URL + "/models/" + properties.model() + ":generateContent?key=" + properties.apiKey())
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .body(body)
-                    .retrieve()
-                    .body(JsonNode.class);
+        long delayMs = INITIAL_RETRY_DELAY_MS;
+        for (int attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+            try {
+                JsonNode response = restClient.post()
+                        .uri(BASE_URL + "/models/" + properties.model() + ":generateContent")
+                        .header("x-goog-api-key", properties.apiKey())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .body(body)
+                        .retrieve()
+                        .body(JsonNode.class);
 
-            String content = response.path("candidates").get(0)
-                    .path("content").path("parts").get(0).path("text").asText();
-            return objectMapper.readValue(content, PdfParseResult.class);
+                JsonNode candidates = response == null ? null : response.path("candidates");
+                if (candidates == null || !candidates.isArray() || candidates.isEmpty()) {
+                    log.warn("Gemini returned no candidates: mode={}", mode);
+                    return null;
+                }
+                String content = candidates.get(0)
+                        .path("content").path("parts").get(0).path("text").asText();
+                return objectMapper.readValue(content, PdfParseResult.class);
 
-        } catch (Exception e) {
-            log.error("Gemini parsing failed: mode={}, size={}", mode, size, e);
-            return null;
+            } catch (HttpClientErrorException.TooManyRequests e) {
+                if (attempt == MAX_RETRIES) {
+                    log.error("Gemini rate limit exceeded after {} retries: mode={}, size={}", MAX_RETRIES, mode, size);
+                    throw new GeminiRateLimitException(MAX_RETRIES);
+                }
+                log.warn("Gemini 429 rate limit, retrying in {}ms (attempt {}/{}): mode={}", delayMs, attempt + 1, MAX_RETRIES, mode);
+                try {
+                    Thread.sleep(delayMs);
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt();
+                    return null;
+                }
+                delayMs *= 2;
+            } catch (JsonProcessingException e) {
+                log.warn("Gemini response JSON invalid (falling back): mode={}, size={}, error={}", mode, size, e.getMessage());
+                return null;
+            } catch (Exception e) {
+                log.error("Gemini parsing failed: mode={}, size={}", mode, size, e);
+                return null;
+            }
         }
+        return null;
     }
 }
