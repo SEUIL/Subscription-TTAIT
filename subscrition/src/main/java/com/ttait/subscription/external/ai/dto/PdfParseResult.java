@@ -1,18 +1,34 @@
 package com.ttait.subscription.external.ai.dto;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import java.util.List;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 public record PdfParseResult(
-        Field applicationPeriod,       // 청약 신청 기간
-        Field supplyHouseholdCount,    // 공급 세대 수
-        Field depositMonthlyRent,      // 보증금/월세
-        Field incomeAssetCriteria,     // 소득/자산 기준
-        Field contact,                 // 문의처
-        Long depositAmountManwon,      // 보증금 (단위: 만원)
-        Long monthlyRentAmountManwon,  // 월세 (단위: 만원)
-        Eligibility eligibility        // 자격 조건
+        String noticeType,                   // 공고 유형: "임대"|"분양"|"분양전환"|"잔여세대"|"기타"
+        Field applicationPeriod,             // 청약 신청 기간 (하위 호환)
+        Field supplyHouseholdCount,          // 공급 세대 수
+        Field depositMonthlyRent,            // 보증금/월세 (임대 전용)
+        Field incomeAssetCriteria,           // 소득/자산 기준
+        Field contact,                       // 문의처
+        Long depositAmountManwon,            // 보증금 (단위: 만원, 임대 전용)
+        Long monthlyRentAmountManwon,        // 월세 (단위: 만원, 임대 전용)
+        Long salePriceMinManwon,             // 최소 분양가 (단위: 만원, 분양 전용)
+        Long salePriceMaxManwon,             // 최대 분양가 (단위: 만원, 분양 전용)
+        Field salePriceRaw,                  // 분양가 원문
+        List<ScheduleItem> scheduleDetails,  // 복수 일정 배열
+        Field importantNotes,                // 유의사항 원문
+        Eligibility eligibility,             // 자격 조건
+        String houseType,                    // 주택 유형 (아파트/빌라/다가구 등, PDF에서 파싱)
+        String address                       // 공고 주소 (API에서 못 채운 경우 보완용)
 ) {
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public record ScheduleItem(
+            String scheduleType,  // "청약신청" | "순번추첨" | "사전개방" | "계약체결" | "상시계약" 등
+            String startDate,     // 시작일 (ISO 또는 원문)
+            String endDate        // 종료일, 단일 날짜이면 null
+    ) {}
+
     @JsonIgnoreProperties(ignoreUnknown = true)
     public record Field(
             String value,        // 추출된 값 (텍스트)

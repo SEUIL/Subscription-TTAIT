@@ -221,6 +221,17 @@ public class Announcement extends SoftDeleteBaseEntity {
         if (monthlyRentAmountManwon != null) this.monthlyRentAmount = monthlyRentAmountManwon;
     }
 
+    public void updateAddress(String fullAddress, String complexName) {
+        if (fullAddress != null) this.fullAddress = fullAddress;
+        if (complexName != null) this.complexName = complexName;
+    }
+
+    public void updateHouseType(String houseTypeRaw) {
+        if (houseTypeRaw != null) {
+            this.houseTypeRaw = houseTypeRaw;
+        }
+    }
+
     public void updateApplicationStartDate(LocalDate startDate) {
         if (startDate != null && this.applicationStartDate == null) {
             this.applicationStartDate = startDate;
