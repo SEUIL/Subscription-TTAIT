@@ -106,6 +106,18 @@ public class AnnouncementDetail extends SoftDeleteBaseEntity {
     @Column(name = "eligibility_raw", columnDefinition = "TEXT")
     private String eligibilityRaw; // AI가 추출한 자격 조건 원문
 
+    @Column(name = "notice_type", length = 20)
+    private String noticeType; // 공고 유형 (임대/분양/분양전환/잔여세대/기타)
+
+    @Column(name = "sale_price_raw", columnDefinition = "TEXT")
+    private String salePriceRaw; // AI가 추출한 분양가 원문
+
+    @Column(name = "schedule_details_json", columnDefinition = "TEXT")
+    private String scheduleDetailsJson; // 복수 일정 JSON 배열
+
+    @Column(name = "important_notes_raw", columnDefinition = "TEXT")
+    private String importantNotesRaw; // AI가 추출한 유의사항 원문
+
     @Builder
     public AnnouncementDetail(Announcement announcement, String applicationDatetimeText,
                               LocalDate documentSubmitStartDate, LocalDate documentSubmitEndDate,
@@ -165,7 +177,9 @@ public class AnnouncementDetail extends SoftDeleteBaseEntity {
 
     public void updatePdfParseResult(String supplyHouseholdCountRaw, String supplyHouseholdCountBasis,
                                      ConfidenceLevel supplyHouseholdCountConfidence, String depositMonthlyRentRaw,
-                                     String incomeAssetCriteriaRaw, String contactRaw, String eligibilityRaw) {
+                                     String incomeAssetCriteriaRaw, String contactRaw, String eligibilityRaw,
+                                     String noticeType, String salePriceRaw,
+                                     String scheduleDetailsJson, String importantNotesRaw) {
         if (supplyHouseholdCountRaw != null) this.supplyHouseholdCountRaw = supplyHouseholdCountRaw;
         if (supplyHouseholdCountBasis != null) this.supplyHouseholdCountBasis = supplyHouseholdCountBasis;
         if (supplyHouseholdCountConfidence != null) this.supplyHouseholdCountConfidence = supplyHouseholdCountConfidence;
@@ -173,5 +187,9 @@ public class AnnouncementDetail extends SoftDeleteBaseEntity {
         if (incomeAssetCriteriaRaw != null) this.incomeAssetCriteriaRaw = incomeAssetCriteriaRaw;
         if (contactRaw != null) this.contactRaw = contactRaw;
         if (eligibilityRaw != null) this.eligibilityRaw = eligibilityRaw;
+        if (noticeType != null) this.noticeType = noticeType;
+        if (salePriceRaw != null) this.salePriceRaw = salePriceRaw;
+        if (scheduleDetailsJson != null) this.scheduleDetailsJson = scheduleDetailsJson;
+        if (importantNotesRaw != null) this.importantNotesRaw = importantNotesRaw;
     }
 }

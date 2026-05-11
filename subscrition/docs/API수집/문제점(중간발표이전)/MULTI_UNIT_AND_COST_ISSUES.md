@@ -1,0 +1,277 @@
+# 공고 파싱 구조 문제점 분석 (중간발표 이전)
+
+> 작성일: 2026-05-07  
+> 브랜치: fix/ai-parsing  
+> 분석 대상: 백엔드 파싱·저장 구조 + 프론트 표시 누락 문제
+
+---
+
+## 개요
+
+LH 공고는 한 건의 공고 안에 여러 단지·여러 주택 유형·각각 다른 금액이 묶여있는 경우가 많다.  
+현재 DB/파싱 구조는 공고 1건 = 단일 주택 1건을 가정하고 설계되어 있어,  
+프론트에서 **보증금, 월세, 공급세대수, 주택유형** 4개 필드가 자주 비어있다.
+
+---
+
+## 문제 1 — 주택유형(houseType) 파싱
+
+### 현재 구현
+- LH 목록 API(`dsList`) / 상세 API(`dsSbd`) 모두 주택유형 필드 없음  
+- fix/ai-parsing 브랜치에서 Gemini SYSTEM_PROMPT에 `houseType` 추출 규칙 추가  
+- `PdfParseResult.houseType` → `Announcement.updateHouseType()` → `announcement.house_type_raw` 저장
+
+```java
+// NoticeImportPersistenceService.java:202
+if (pdfResult.houseType() != null) announcement.updateHouseType(pdfResult.houseType());
+```
+
+### 문제점
+
+#### 1-1. 다중 주택유형 공고에서 단일 값만 추출
+공고 예시:
+```
+- 국민임대아파트 85㎡ 30세대
+- 행복주택 40㎡ 20세대
+- 영구임대 50㎡ 10세대
+```
+Gemini 프롬프트는 `houseType: string|null` — **단일 문자열만 반환**하도록 설계되어 있음.  
+여러 주택유형이 혼재하면 첫 번째 유형만 반환하거나, 애매하면 null 반환.
+
+#### 1-2. house_type_normalized 미업데이트
+`updateHouseType()`은 `houseTypeRaw`만 업데이트하고 `houseTypeNormalized`는 건드리지 않는다.
+
+```java
+// Announcement.java:229
+public void updateHouseType(String houseTypeRaw) {
+    if (houseTypeRaw != null) {
+        this.houseTypeRaw = houseTypeRaw;
+        // houseTypeNormalized 업데이트 없음 ← 문제
+    }
+}
+```
+
+필터링/추천 로직은 `houseTypeNormalized`를 기준으로 비교하므로, `houseTypeRaw`만 저장해서는 필터링이 작동하지 않는다.
+
+#### 1-3. 관련 파일
+| 파일 | 위치 |
+|------|------|
+| SYSTEM_PROMPT | `GeminiClient.java:87` |
+| houseType 저장 | `NoticeImportPersistenceService.java:202` |
+| updateHouseType() | `Announcement.java:229` |
+| 필터 비교 | `AnnouncementQueryService.java` — `matchesHouseType()` |
+
+---
+
+## 문제 2 — 비용 정보 (보증금/월세/분양가)
+
+### 현재 구현
+
+`PdfParseResult`에는 비용 관련 필드가 이미 존재:
+
+```java
+// PdfParseResult.java
+Long depositAmountManwon,        // 보증금 (임대 전용)
+Long monthlyRentAmountManwon,    // 월세 (임대 전용)
+Long salePriceMinManwon,         // 최소 분양가 (분양 전용)
+Long salePriceMaxManwon,         // 최대 분양가 (분양 전용)
+Field salePriceRaw,              // 분양가 원문
+String noticeType,               // "임대"|"분양"|"분양전환"|"잔여세대"|"기타"
+```
+
+저장은 다음처럼 처리:
+```java
+// NoticeImportPersistenceService.java:200
+announcement.updateDepositAndRent(pdfResult.depositAmountManwon(), pdfResult.monthlyRentAmountManwon());
+```
+
+### 문제점
+
+#### 2-1. 분양가가 DB에 저장되지 않음
+`salePriceMinManwon` / `salePriceMaxManwon`은 `PdfParseResult`에만 존재하고  
+`Announcement` 엔티티에 해당 컬럼이 없다. 저장 자체가 안 된다.
+
+```
+PdfParseResult.salePriceMinManwon  →  ??? (엔티티 컬럼 없음, 유실)
+PdfParseResult.salePriceMaxManwon  →  ??? (엔티티 컬럼 없음, 유실)
+```
+
+#### 2-2. 임대/분양 구분 없이 같은 필드 사용
+프론트 `AnnouncementCard.jsx`는 noticeType 무관하게 동일 로직:
+```jsx
+// AnnouncementCard.jsx:109–115
+{(a.depositAmount != null || a.monthlyRentAmount != null) && (
+  <p>보증금 {formatPrice(a.depositAmount)}만 | 월세 {formatPrice(a.monthlyRentAmount)}만</p>
+)}
+```
+분양 공고에서는 보증금/월세 대신 분양가(min~max)를 보여줘야 하는데, 이 분기가 없다.  
+또한 분양가 자체가 DB에 저장되지 않으므로 표시 자체가 불가능.
+
+#### 2-3. 다중 금액 타입 공고에서 단일 값만 추출
+공고 예시:
+```
+- 전용 40㎡: 보증금 300만 / 월세 15만
+- 전용 50㎡: 보증금 500만 / 월세 20만
+- 전용 60㎡: 보증금 800만 / 월세 30만
+```
+Gemini 프롬프트는 `depositAmountManwon: number|null` — **단일 숫자만 반환**.  
+여러 금액이 혼재하면 첫 번째 or 평균값 or null 중 하나가 나온다.
+
+AI 응답에서 어떤 경우에 null이 나오는지 분석:
+- 금액 여러 개 → null로 폐기하는 경향 (AI 판단)
+- 금액이 표 형태로 나열 → PDF 바이트 모드에선 어느 정도 읽히나 텍스트 fallback에서는 인식 실패
+- 분양 공고에서 임대 필드 → SYSTEM_PROMPT 규칙 `depositAmountManwon: Valid only for noticeType=임대. null for 분양/분양전환.` → 분양 공고는 의도적으로 null
+
+#### 2-4. 관련 파일
+| 파일 | 위치 |
+|------|------|
+| 비용 필드 정의 | `PdfParseResult.java:14–18` |
+| 비용 저장 | `NoticeImportPersistenceService.java:200` |
+| 엔티티 필드 | `Announcement.java:101–106` (deposit_amount, monthly_rent_amount만 존재) |
+| 프론트 표시 | `AnnouncementCard.jsx:109–115` |
+
+---
+
+## 문제 3 (가장 중요) — 다중 단지·다중 주택 공고 구조
+
+### 현재 DB 구조
+
+```
+announcement (1건)
+└── announcement_detail (1:1, 첫 번째 dsSbd만 저장)
+```
+
+`AnnouncementDetail`은 단지 1개를 위한 구조:
+- `complex_name`, `complex_address`, `complex_detail_address`
+- `household_count`, `exclusive_area_text`, `exclusive_area_value`
+
+### 현재 LH 상세 API 처리 방식
+
+```java
+// NoticeImportPersistenceService.java:129–130
+JsonNode schedule = first(findArray(response, "dsSplScdl"));
+JsonNode site     = first(findArray(response, "dsSbd"));  // ← 첫 번째 단지만
+JsonNode etc      = first(findArray(response, "dsEtcInfo"));
+```
+
+`dsSbd` 배열이 여러 개여도 **`first()`로 첫 번째만 가져온다**.
+
+### 실제 LH 공고 유형별 dsSbd 구조
+
+| 공고 유형 | dsSbd 배열 개수 | 문제 |
+|----------|----------------|------|
+| 단일 단지 (일반 임대) | 1개 | 문제 없음 |
+| 단지 내 여러 면적 타입 | 복수 (타입별 1행) | 첫 번째 타입만 저장 |
+| 여러 지역 묶음 공고 | 복수 (지역별 1행) | 첫 번째 지역만 저장, 나머지 주소/세대수 유실 |
+| 전국 매입임대 | 복수 or null | 현재 "전국공고(직접확인필요)"로 퉁쳐서 저장 |
+
+### 파싱 구조에도 동일 문제
+
+`PdfParseResult`도 단일 값 구조:
+- `houseType: string|null` — 단일 주택유형
+- `depositAmountManwon: number|null` — 단일 보증금
+- `monthlyRentAmountManwon: number|null` — 단일 월세
+- `supplyHouseholdCount.value: string|null` — "총 N세대" 원문 (합산인지 타입별인지 불명확)
+
+여러 타입이 있는 공고의 PDF 원문:
+```
+주택유형  면적(㎡)  보증금(만원)  월세(만원)  세대수
+아파트    40       300         15         20
+아파트    50       500         20         15
+아파트    60       800         30         10
+합계                                       45
+```
+→ Gemini가 단일 값을 추출해야 하므로 null 반환 or 임의 첫 행 반환.
+
+### 공급 세대수 파싱 실패 원인
+
+`SupplyCountParser`는 다음 패턴만 HIGH_CONFIDENCE로 인식:
+```
+총 N호, N호 공급, 공급호수 N, N세대 모집
+```
+위 표 형태에서 "합계 45" 같은 패턴은 HIGH_CONFIDENCE 기준에 부합하지 않아  
+`supply_household_count`가 null 또는 LOW_CONFIDENCE로 저장된다.
+
+### 영향 범위
+
+```
+프론트에서 비어보이는 필드:
+├── 보증금 (depositAmount)         ← 다중 금액 → Gemini null 반환
+├── 월세 (monthlyRentAmount)       ← 동일
+├── 공급세대수 (supplyHouseholdCount) ← 합산 표현 미인식 or HIGH 신뢰도 실패
+└── 주택유형 (houseType)           ← 다중 유형 → null 반환 or 부정확
+```
+
+---
+
+## 다음 스프린트 해결 방향 (참고)
+
+### 방향 A — DB 구조 확장 (권장)
+`announcement_unit` 테이블 추가 (1공고 : N주택유형):
+
+```
+announcement_unit
+├── id
+├── announcement_id (FK)
+├── house_type_raw        # 주택유형
+├── exclusive_area        # 전용면적 (㎡)
+├── deposit_amount        # 보증금 (만원)
+├── monthly_rent_amount   # 월세 (만원)
+├── sale_price_min        # 분양가 최소
+├── sale_price_max        # 분양가 최대
+├── supply_household_count # 해당 유형 세대수
+└── unit_order            # 정렬 순서
+```
+
+`PdfParseResult`에 `List<UnitItem>` 배열 필드 추가 → Gemini가 배열로 반환.
+
+`Announcement` 엔티티의 `deposit_amount`, `monthly_rent_amount`, `house_type_raw`는  
+대표값 저장 용도로 유지 (목록 필터용) → 내부적으로 `announcement_unit` 최솟값/대표 타입으로 계산.
+
+### 방향 B — 단순 범위 저장 (빠른 대안)
+`announcement` 테이블에 min/max 컬럼 추가:
+```
+deposit_amount_min, deposit_amount_max
+monthly_rent_amount_min, monthly_rent_amount_max
+house_types  (JSON 배열 또는 쉼표 구분 문자열)
+```
+Gemini 프롬프트도 배열이 아닌 min/max 형태로 변경.
+
+### Gemini 프롬프트 변경 필요 사항
+현재 단일 값 구조 → 배열 구조로 변경 필요:
+```json
+// 현재
+"depositAmountManwon": number|null
+
+// 변경 후 (방향 A)
+"units": [
+  { "houseType": string, "area": number, "depositManwon": number, "rentManwon": number, "count": number },
+  ...
+]
+```
+
+### 분양 공고 처리
+`announcement_detail.notice_type`이 "분양"/"분양전환"이면  
+`Announcement`에 `sale_price_min` / `sale_price_max` 컬럼 추가 + 저장 + 프론트 분기 표시.
+
+---
+
+## 검증 방법 (현황 확인용)
+
+```sql
+-- 비용 필드가 null인 공고 비율 확인
+SELECT
+  COUNT(*) AS total,
+  SUM(CASE WHEN deposit_amount IS NULL AND monthly_rent_amount IS NULL THEN 1 ELSE 0 END) AS no_cost,
+  SUM(CASE WHEN house_type_raw IS NULL THEN 1 ELSE 0 END) AS no_house_type,
+  SUM(CASE WHEN supply_household_count IS NULL THEN 1 ELSE 0 END) AS no_count
+FROM announcement
+WHERE deleted = false AND merged = false;
+
+-- notice_type별 분포 (임대/분양 비율 파악)
+SELECT d.notice_type, COUNT(*) AS cnt
+FROM announcement_detail d
+JOIN announcement a ON a.id = d.announcement_id
+WHERE a.deleted = false
+GROUP BY d.notice_type;
+```
