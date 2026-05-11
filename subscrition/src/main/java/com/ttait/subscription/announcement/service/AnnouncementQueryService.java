@@ -4,6 +4,7 @@ import com.ttait.subscription.announcement.domain.Announcement;
 import com.ttait.subscription.announcement.domain.AnnouncementCategory;
 import com.ttait.subscription.announcement.domain.AnnouncementDetail;
 import com.ttait.subscription.announcement.domain.AnnouncementStatus;
+import com.ttait.subscription.announcement.domain.ParseReviewStatus;
 import com.ttait.subscription.announcement.dto.AnnouncementDetailResponse;
 import com.ttait.subscription.announcement.dto.AnnouncementListItemResponse;
 import com.ttait.subscription.announcement.dto.CategoryFilterOption;
@@ -36,6 +37,11 @@ import org.springframework.util.StringUtils;
 @Transactional(readOnly = true)
 public class AnnouncementQueryService {
 
+    private static final List<ParseReviewStatus> PUBLIC_VISIBLE_REVIEW_STATUSES = List.of(
+            ParseReviewStatus.APPROVED,
+            ParseReviewStatus.CORRECTED
+    );
+
     private final AnnouncementRepository announcementRepository;
     private final AnnouncementDetailRepository announcementDetailRepository;
     private final AnnouncementCategoryRepository announcementCategoryRepository;
@@ -64,7 +70,9 @@ public class AnnouncementQueryService {
                                                                Long maxMonthlyRent,
                                                                List<CategoryCode> categories,
                                                                Pageable pageable) {
-        List<Announcement> announcements = announcementRepository.findByDeletedFalseAndMergedFalse(Pageable.unpaged())
+        List<Announcement> announcements = announcementRepository.findPublicVisible(
+                        PUBLIC_VISIBLE_REVIEW_STATUSES,
+                        Pageable.unpaged())
                 .getContent();
         Map<Long, Set<CategoryCode>> categoryMap = loadCategoryMap(extractIds(announcements));
 
@@ -96,7 +104,9 @@ public class AnnouncementQueryService {
     }
 
     public AnnouncementDetailResponse getAnnouncementDetail(Long announcementId) {
-        Announcement announcement = announcementRepository.findByIdAndDeletedFalse(announcementId)
+        Announcement announcement = announcementRepository.findPublicVisibleById(
+                        announcementId,
+                        PUBLIC_VISIBLE_REVIEW_STATUSES)
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "announcement not found"));
         AnnouncementDetail detail = announcementDetailRepository.findByAnnouncementIdAndDeletedFalse(announcementId)
                 .orElse(null);
@@ -104,13 +114,17 @@ public class AnnouncementQueryService {
     }
 
     public FilterOptionResponse regionLevel1Options() {
-        return new FilterOptionResponse(announcementRepository.findDistinctRegionLevel1());
+        return new FilterOptionResponse(
+                announcementRepository.findDistinctPublicVisibleRegionLevel1(PUBLIC_VISIBLE_REVIEW_STATUSES));
     }
 
     public FilterOptionResponse regionLevel2Options(String regionLevel1) {
         List<Announcement> announcements = StringUtils.hasText(regionLevel1)
-                ? announcementRepository.findByDeletedFalseAndMergedFalseAndRegionLevel1IgnoreCase(regionLevel1)
-                : announcementRepository.findByDeletedFalseAndMergedFalse(Pageable.unpaged()).getContent();
+                ? announcementRepository.findPublicVisibleByRegionLevel1IgnoreCase(
+                        regionLevel1,
+                        PUBLIC_VISIBLE_REVIEW_STATUSES)
+                : announcementRepository.findPublicVisible(PUBLIC_VISIBLE_REVIEW_STATUSES, Pageable.unpaged())
+                        .getContent();
 
         List<String> items = announcements.stream()
                 .map(this::resolveRegionLevel2)
@@ -123,11 +137,12 @@ public class AnnouncementQueryService {
     }
 
     public FilterOptionResponse supplyTypeOptions() {
-        return new FilterOptionResponse(announcementRepository.findDistinctSupplyTypes());
+        return new FilterOptionResponse(
+                announcementRepository.findDistinctPublicVisibleSupplyTypes(PUBLIC_VISIBLE_REVIEW_STATUSES));
     }
 
     public FilterOptionResponse houseTypeOptions() {
-        List<String> items = announcementRepository.findByDeletedFalseAndMergedFalse(Pageable.unpaged())
+        List<String> items = announcementRepository.findPublicVisible(PUBLIC_VISIBLE_REVIEW_STATUSES, Pageable.unpaged())
                 .getContent()
                 .stream()
                 .map(this::resolveHouseType)
@@ -139,7 +154,8 @@ public class AnnouncementQueryService {
     }
 
     public FilterOptionResponse providerOptions() {
-        return new FilterOptionResponse(announcementRepository.findDistinctProviders());
+        return new FilterOptionResponse(
+                announcementRepository.findDistinctPublicVisibleProviders(PUBLIC_VISIBLE_REVIEW_STATUSES));
     }
 
     public CategoryFilterOptionResponse categoryOptions() {
