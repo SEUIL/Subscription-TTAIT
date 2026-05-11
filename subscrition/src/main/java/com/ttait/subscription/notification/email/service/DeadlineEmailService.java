@@ -1,6 +1,7 @@
 package com.ttait.subscription.notification.email.service;
 
 import com.ttait.subscription.announcement.domain.Announcement;
+import com.ttait.subscription.announcement.domain.ParseReviewStatus;
 import com.ttait.subscription.announcement.dto.RecommendationItemResponse;
 import com.ttait.subscription.notification.email.domain.EmailNotificationLog;
 import com.ttait.subscription.notification.email.domain.EmailNotificationType;
@@ -24,6 +25,11 @@ public class DeadlineEmailService {
 
     private static final Logger log = LoggerFactory.getLogger(DeadlineEmailService.class);
 
+    private static final List<ParseReviewStatus> PUBLIC_VISIBLE_REVIEW_STATUSES = List.of(
+            ParseReviewStatus.APPROVED,
+            ParseReviewStatus.CORRECTED
+    );
+
     private static final Map<Integer, EmailNotificationType> DEADLINE_DAYS = Map.of(
         7, EmailNotificationType.DEADLINE_7,
         3, EmailNotificationType.DEADLINE_3,
@@ -46,7 +52,9 @@ public class DeadlineEmailService {
     }
 
     public void sendFor(User user, LocalDate today) {
-        List<UserFavoriteAnnouncement> favorites = favoriteRepository.findActiveByUserId(user.getId());
+        List<UserFavoriteAnnouncement> favorites = favoriteRepository.findActiveByUserId(
+                user.getId(),
+                PUBLIC_VISIBLE_REVIEW_STATUSES);
         if (favorites.isEmpty()) {
             return;
         }

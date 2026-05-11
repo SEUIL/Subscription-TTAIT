@@ -4,6 +4,7 @@ import com.ttait.subscription.announcement.domain.Announcement;
 import com.ttait.subscription.announcement.domain.AnnouncementCategory;
 import com.ttait.subscription.announcement.domain.AnnouncementEligibility;
 import com.ttait.subscription.announcement.domain.MaritalTargetType;
+import com.ttait.subscription.announcement.domain.ParseReviewStatus;
 import com.ttait.subscription.announcement.dto.RecommendationItemResponse;
 import com.ttait.subscription.announcement.repository.AnnouncementCategoryRepository;
 import com.ttait.subscription.announcement.repository.AnnouncementEligibilityRepository;
@@ -36,6 +37,11 @@ import org.springframework.util.StringUtils;
 @Transactional(readOnly = true)
 public class RecommendationService {
 
+    private static final List<ParseReviewStatus> PUBLIC_VISIBLE_REVIEW_STATUSES = List.of(
+            ParseReviewStatus.APPROVED,
+            ParseReviewStatus.CORRECTED
+    );
+
     private final AnnouncementRepository announcementRepository;
     private final AnnouncementCategoryRepository announcementCategoryRepository;
     private final AnnouncementEligibilityRepository announcementEligibilityRepository;
@@ -64,7 +70,9 @@ public class RecommendationService {
         Set<CategoryCode> userCategories = deriveUserCategories(profile,
                 userCategoryRepository.findByUserId(userId).stream().map(UserCategory::getCategoryCode).toList());
 
-        List<Announcement> announcements = announcementRepository.findByDeletedFalseAndMergedFalse(Pageable.unpaged())
+        List<Announcement> announcements = announcementRepository.findPublicVisible(
+                        PUBLIC_VISIBLE_REVIEW_STATUSES,
+                        Pageable.unpaged())
                 .getContent();
         List<Long> announcementIds = announcements.stream().map(Announcement::getId).toList();
         Map<Long, Set<CategoryCode>> announcementCategoryMap = loadAnnouncementCategoryMap(announcementIds);

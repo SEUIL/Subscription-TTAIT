@@ -34,3 +34,4 @@ CLAUDE.md
 subscrition/backend.err.log
 subscrition/backend.out.log
 frontend/.env.example
+subscrition/.claude/settings.local.json
