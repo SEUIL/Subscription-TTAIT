@@ -20,6 +20,15 @@ public interface AnnouncementRepository extends JpaRepository<Announcement, Long
 
     Optional<Announcement> findBySourcePrimaryAndSourceNoticeId(SourceType sourcePrimary, String sourceNoticeId);
 
+    @Query("""
+            SELECT a FROM Announcement a
+            WHERE a.sourcePrimary = :sourcePrimary
+              AND a.sourceNoticeId = :sourceNoticeId
+            ORDER BY a.deleted ASC, a.collectedAt DESC, a.id DESC
+            """)
+    List<Announcement> findSourcePairCandidates(@Param("sourcePrimary") SourceType sourcePrimary,
+                                                @Param("sourceNoticeId") String sourceNoticeId);
+
     List<Announcement> findByMergedGroupKeyAndDeletedFalse(String mergedGroupKey);
 
     List<Announcement> findByNoticeStatusAndDeletedFalse(AnnouncementStatus noticeStatus);

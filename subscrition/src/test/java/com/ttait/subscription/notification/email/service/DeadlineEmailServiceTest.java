@@ -83,7 +83,7 @@ class DeadlineEmailServiceTest {
         @Test
         @DisplayName("즐겨찾기가 없으면 이메일을 발송하지 않는다")
         void sendFor_noFavorites_skips() {
-            given(favoriteRepository.findActiveByUserId(any())).willReturn(List.of());
+            given(favoriteRepository.findActiveByUserId(any(), any())).willReturn(List.of());
 
             deadlineEmailService.sendFor(user, LocalDate.now());
 
@@ -97,7 +97,7 @@ class DeadlineEmailServiceTest {
             Announcement announcement = mockAnnouncement(10L, today.plusDays(7));
             UserFavoriteAnnouncement fav = mockFavorite(announcement);
 
-            given(favoriteRepository.findActiveByUserId(any())).willReturn(List.of(fav));
+            given(favoriteRepository.findActiveByUserId(any(), any())).willReturn(List.of(fav));
             given(logRepository.existsByUserIdAndAnnouncementIdAndType(
                 any(), eq(10L), eq(EmailNotificationType.DEADLINE_7))).willReturn(false);
             given(templateEngine.process(eq("email/deadline-reminder"), any(Context.class)))
@@ -116,7 +116,7 @@ class DeadlineEmailServiceTest {
             Announcement announcement = mockAnnouncement(10L, today.plusDays(3));
             UserFavoriteAnnouncement fav = mockFavorite(announcement);
 
-            given(favoriteRepository.findActiveByUserId(any())).willReturn(List.of(fav));
+            given(favoriteRepository.findActiveByUserId(any(), any())).willReturn(List.of(fav));
             given(logRepository.existsByUserIdAndAnnouncementIdAndType(
                 any(), eq(10L), eq(EmailNotificationType.DEADLINE_3))).willReturn(false);
             given(templateEngine.process(eq("email/deadline-reminder"), any(Context.class)))
@@ -134,7 +134,7 @@ class DeadlineEmailServiceTest {
             Announcement announcement = mockAnnouncement(10L, today.plusDays(1));
             UserFavoriteAnnouncement fav = mockFavorite(announcement);
 
-            given(favoriteRepository.findActiveByUserId(any())).willReturn(List.of(fav));
+            given(favoriteRepository.findActiveByUserId(any(), any())).willReturn(List.of(fav));
             given(logRepository.existsByUserIdAndAnnouncementIdAndType(
                 any(), eq(10L), eq(EmailNotificationType.DEADLINE_1))).willReturn(false);
             given(templateEngine.process(eq("email/deadline-reminder"), any(Context.class)))
@@ -152,7 +152,7 @@ class DeadlineEmailServiceTest {
             Announcement announcement = mockAnnouncement(10L, today.plusDays(7));
             UserFavoriteAnnouncement fav = mockFavorite(announcement);
 
-            given(favoriteRepository.findActiveByUserId(any())).willReturn(List.of(fav));
+            given(favoriteRepository.findActiveByUserId(any(), any())).willReturn(List.of(fav));
             given(logRepository.existsByUserIdAndAnnouncementIdAndType(
                 any(), eq(10L), eq(EmailNotificationType.DEADLINE_7))).willReturn(true);
 
@@ -167,7 +167,7 @@ class DeadlineEmailServiceTest {
             Announcement announcement = mockAnnouncement(10L, null);
             UserFavoriteAnnouncement fav = mockFavorite(announcement);
 
-            given(favoriteRepository.findActiveByUserId(any())).willReturn(List.of(fav));
+            given(favoriteRepository.findActiveByUserId(any(), any())).willReturn(List.of(fav));
 
             deadlineEmailService.sendFor(user, LocalDate.now());
 
@@ -181,7 +181,7 @@ class DeadlineEmailServiceTest {
             Announcement announcement = mockAnnouncement(10L, today.plusDays(5)); // D-5
             UserFavoriteAnnouncement fav = mockFavorite(announcement);
 
-            given(favoriteRepository.findActiveByUserId(any())).willReturn(List.of(fav));
+            given(favoriteRepository.findActiveByUserId(any(), any())).willReturn(List.of(fav));
 
             deadlineEmailService.sendFor(user, today);
 

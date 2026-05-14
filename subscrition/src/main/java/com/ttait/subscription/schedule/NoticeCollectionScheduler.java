@@ -23,20 +23,36 @@ public class NoticeCollectionScheduler {
     @Scheduled(cron = "0 0 2 * * *")
     public void collectLhNotices() {
         log.info("Starting daily LH notice collection");
+        int totalFetched = 0;
+        int totalScanned = 0;
         int totalImported = 0;
+        int totalUnchanged = 0;
+        int totalGeminiSkipped = 0;
         int totalFailed = 0;
 
         for (int page = 1; page <= MAX_PAGES; page++) {
-            ImportResult result = orchestrator.importLhNotices(page, BATCH_SIZE);
+            ImportResult result = orchestrator.importLhNoticesForScheduler(page, BATCH_SIZE);
+            totalFetched += result.fetched();
+            totalScanned += result.scanned();
             totalImported += result.imported();
+            totalUnchanged += result.unchanged();
+            totalGeminiSkipped += result.geminiSkipped();
             totalFailed += result.failed();
 
-            if (result.imported() == 0 && result.failed() == 0) {
-                log.info("No more notices at page={}, stopping", page);
+            if (result.endOfList()) {
+                log.info("LH notice list ended at page={}, stopping", page);
                 break;
             }
         }
 
-        log.info("Daily LH collection completed: imported={}, failed={}", totalImported, totalFailed);
+        log.info(
+                "Daily LH collection completed: fetched={}, scanned={}, imported={}, unchanged={}, geminiSkipped={}, failed={}",
+                totalFetched,
+                totalScanned,
+                totalImported,
+                totalUnchanged,
+                totalGeminiSkipped,
+                totalFailed
+        );
     }
 }

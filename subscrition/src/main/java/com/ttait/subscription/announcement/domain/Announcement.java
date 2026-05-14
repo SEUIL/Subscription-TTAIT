@@ -9,6 +9,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import jakarta.persistence.Version;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -19,7 +20,13 @@ import lombok.NoArgsConstructor;
 
 @Getter
 @Entity
-@Table(name = "announcement")
+@Table(
+        name = "announcement",
+        uniqueConstraints = @UniqueConstraint(
+                name = "uk_announcement_source_notice",
+                columnNames = {"source_primary", "source_notice_id"}
+        )
+)
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Announcement extends SoftDeleteBaseEntity {
 
@@ -212,6 +219,16 @@ public class Announcement extends SoftDeleteBaseEntity {
         this.merged = false;
     }
 
+    public void retireDuplicateSourceIdentity() {
+        String suffix = "#DUPLICATE-" + this.id;
+        int maxBaseLength = 100 - suffix.length();
+        String base = this.sourceNoticeId == null ? "" : this.sourceNoticeId;
+        this.sourceNoticeId = base.length() > maxBaseLength
+                ? base.substring(0, maxBaseLength) + suffix
+                : base + suffix;
+        softDelete();
+    }
+
     public void updateSupplyHouseholdCount(Integer count) {
         this.supplyHouseholdCount = count;
     }
@@ -230,6 +247,19 @@ public class Announcement extends SoftDeleteBaseEntity {
         if (houseTypeRaw != null) {
             this.houseTypeRaw = houseTypeRaw;
         }
+    }
+
+    public void updateUnitSummary(String fullAddress, String complexName,
+                                  String houseTypeRaw, String houseTypeNormalized,
+                                  Long depositAmount, Long monthlyRentAmount,
+                                  Integer supplyHouseholdCount) {
+        if (fullAddress != null) this.fullAddress = fullAddress;
+        if (complexName != null) this.complexName = complexName;
+        if (houseTypeRaw != null) this.houseTypeRaw = houseTypeRaw;
+        if (houseTypeNormalized != null) this.houseTypeNormalized = houseTypeNormalized;
+        if (depositAmount != null) this.depositAmount = depositAmount;
+        if (monthlyRentAmount != null) this.monthlyRentAmount = monthlyRentAmount;
+        if (supplyHouseholdCount != null) this.supplyHouseholdCount = supplyHouseholdCount;
     }
 
     public void updateApplicationStartDate(LocalDate startDate) {

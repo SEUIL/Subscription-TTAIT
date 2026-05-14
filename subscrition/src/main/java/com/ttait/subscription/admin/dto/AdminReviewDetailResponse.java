@@ -7,6 +7,7 @@ import com.ttait.subscription.announcement.domain.ConfidenceLevel;
 import com.ttait.subscription.announcement.domain.MaritalTargetType;
 import com.ttait.subscription.announcement.domain.ParseReviewStatus;
 import java.time.LocalDateTime;
+import java.util.List;
 
 public record AdminReviewDetailResponse(
         Long announcementId,   // 공고 PK
@@ -22,6 +23,12 @@ public record AdminReviewDetailResponse(
         String supplyHouseholdCountRaw,             // 공급 세대 수 AI 추출 원문
         String supplyHouseholdCountBasis,           // 공급 세대 수 추출 근거 (AI 설명)
         ConfidenceLevel supplyHouseholdCountConfidence, // 공급 세대 수 추출 신뢰도
+
+        String noticeType,                    // 공고 유형
+        String salePriceRaw,                  // 분양가 원문
+        String scheduleDetailsJson,           // 복수 일정 JSON
+        String importantNotesRaw,             // 유의사항 원문
+        List<AdminAnnouncementUnitResponse> units, // 단위별 파싱/저장 결과
 
         Integer ageMin,                      // 최소 나이 조건
         Integer ageMax,                      // 최대 나이 조건
@@ -47,7 +54,8 @@ public record AdminReviewDetailResponse(
         String reviewNote               // 검수 메모
 ) {
     public static AdminReviewDetailResponse from(Announcement announcement, AnnouncementDetail detail,
-                                                  AnnouncementEligibility eligibility) {
+                                                  AnnouncementEligibility eligibility,
+                                                  List<AdminAnnouncementUnitResponse> units) {
         return new AdminReviewDetailResponse(
                 announcement.getId(),
                 announcement.getNoticeName(),
@@ -62,6 +70,12 @@ public record AdminReviewDetailResponse(
                 detail != null ? detail.getSupplyHouseholdCountRaw() : null,
                 detail != null ? detail.getSupplyHouseholdCountBasis() : null,
                 detail != null ? detail.getSupplyHouseholdCountConfidence() : null,
+
+                detail != null ? detail.getNoticeType() : null,
+                detail != null ? detail.getSalePriceRaw() : null,
+                detail != null ? detail.getScheduleDetailsJson() : null,
+                detail != null ? detail.getImportantNotesRaw() : null,
+                units,
 
                 eligibility.getAgeMin(),
                 eligibility.getAgeMax(),

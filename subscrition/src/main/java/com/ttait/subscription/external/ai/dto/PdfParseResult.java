@@ -19,6 +19,7 @@ public record PdfParseResult(
         List<ScheduleItem> scheduleDetails,  // 복수 일정 배열
         Field importantNotes,                // 유의사항 원문
         Eligibility eligibility,             // 자격 조건
+        List<UnitItem> units,                // 단지/주택형/면적/가격 단위 배열
         String houseType,                    // 주택 유형 (아파트/빌라/다가구 등, PDF에서 파싱)
         String address                       // 공고 주소 (API에서 못 채운 경우 보완용)
 ) {
@@ -40,6 +41,27 @@ public record PdfParseResult(
             return value != null && !value.isBlank();
         }
     }
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public record UnitItem(
+            String complexName,              // 단지명/동명
+            String address,                  // 단지 주소
+            String regionLevel1,             // 시/도
+            String regionLevel2,             // 시/군/구
+            String supplyType,               // 공급 유형
+            String houseType,                // 주택 유형
+            String exclusiveAreaText,        // 전용면적 원문
+            Double exclusiveAreaValue,       // 전용면적 숫자값
+            Long depositAmountManwon,        // 보증금 (만원)
+            Long monthlyRentAmountManwon,    // 월세 (만원)
+            Long salePriceMinManwon,         // 최소 분양가 (만원)
+            Long salePriceMaxManwon,         // 최대 분양가 (만원)
+            String salePriceRaw,             // 분양가 원문
+            Integer supplyHouseholdCount,    // 공급 세대 수
+            String rawText,                  // 단위 행 판단 근거 원문
+            Double confidence,               // 단위 추출 신뢰도
+            Integer sourcePage               // 출처 PDF 페이지 번호
+    ) {}
 
     @JsonIgnoreProperties(ignoreUnknown = true)
     public record Eligibility(

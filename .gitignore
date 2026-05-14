@@ -35,3 +35,7 @@ subscrition/backend.err.log
 subscrition/backend.out.log
 frontend/.env.example
 subscrition/.claude/settings.local.json
+
+# AI agent/session state
+.sisyphus/
+AGENTS.md

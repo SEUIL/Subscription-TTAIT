@@ -3,6 +3,7 @@ package com.ttait.subscription.notification.favorite.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.mock;
@@ -51,19 +52,19 @@ class FavoriteServiceTest {
         @Test
         @DisplayName("이미 즐겨찾기한 경우 중복 저장하지 않는다")
         void add_alreadyExists_skips() {
+            Announcement announcement = mock(Announcement.class);
+            given(announcementRepository.findPublicVisibleById(eq(10L), any())).willReturn(Optional.of(announcement));
             given(favoriteRepository.existsByUserIdAndAnnouncementId(1L, 10L)).willReturn(true);
 
             favoriteService.add(1L, 10L);
 
-            then(announcementRepository).shouldHaveNoInteractions();
             then(favoriteRepository).should(never()).save(any());
         }
 
         @Test
         @DisplayName("공고가 존재하지 않으면 404 예외를 던진다")
         void add_announcementNotFound_throws() {
-            given(favoriteRepository.existsByUserIdAndAnnouncementId(1L, 99L)).willReturn(false);
-            given(announcementRepository.findById(99L)).willReturn(Optional.empty());
+            given(announcementRepository.findPublicVisibleById(eq(99L), any())).willReturn(Optional.empty());
 
             assertThatThrownBy(() -> favoriteService.add(1L, 99L))
                 .isInstanceOf(ApiException.class);
@@ -72,10 +73,7 @@ class FavoriteServiceTest {
         @Test
         @DisplayName("소프트 삭제된 공고는 404 예외를 던진다")
         void add_deletedAnnouncement_throws() {
-            Announcement deleted = mock(Announcement.class);
-            given(deleted.isDeleted()).willReturn(true);
-            given(favoriteRepository.existsByUserIdAndAnnouncementId(1L, 10L)).willReturn(false);
-            given(announcementRepository.findById(10L)).willReturn(Optional.of(deleted));
+            given(announcementRepository.findPublicVisibleById(eq(10L), any())).willReturn(Optional.empty());
 
             assertThatThrownBy(() -> favoriteService.add(1L, 10L))
                 .isInstanceOf(ApiException.class);
@@ -85,9 +83,8 @@ class FavoriteServiceTest {
         @DisplayName("정상 공고를 즐겨찾기에 추가한다")
         void add_validAnnouncement_saves() {
             Announcement announcement = mock(Announcement.class);
-            given(announcement.isDeleted()).willReturn(false);
+            given(announcementRepository.findPublicVisibleById(eq(10L), any())).willReturn(Optional.of(announcement));
             given(favoriteRepository.existsByUserIdAndAnnouncementId(1L, 10L)).willReturn(false);
-            given(announcementRepository.findById(10L)).willReturn(Optional.of(announcement));
 
             favoriteService.add(1L, 10L);
 
@@ -129,7 +126,7 @@ class FavoriteServiceTest {
         @Test
         @DisplayName("즐겨찾기 여부를 반환한다")
         void exists_returnsRepositoryResult() {
-            given(favoriteRepository.existsByUserIdAndAnnouncementId(1L, 10L)).willReturn(true);
+            given(favoriteRepository.existsVisibleByUserIdAndAnnouncementId(eq(1L), eq(10L), any())).willReturn(true);
 
             assertThat(favoriteService.exists(1L, 10L)).isTrue();
         }
@@ -152,7 +149,7 @@ class FavoriteServiceTest {
             PageRequest pageable = PageRequest.of(0, 10);
 
             Page<UserFavoriteAnnouncement> page = new PageImpl<>(List.of(fav));
-            given(favoriteRepository.findByUserIdWithAnnouncement(1L, pageable)).willReturn(page);
+            given(favoriteRepository.findVisibleByUserIdWithAnnouncement(eq(1L), any(), eq(pageable))).willReturn(page);
 
             Page<FavoriteResponse> result = favoriteService.list(1L, pageable);
 
