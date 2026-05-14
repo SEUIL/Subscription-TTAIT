@@ -41,6 +41,27 @@ public class GeminiClient {
               "scheduleDetails": [
                 {"scheduleType": string, "startDate": string|null, "endDate": string|null}
               ],
+              "units": [
+                {
+                  "complexName": string|null,
+                  "address": string|null,
+                  "regionLevel1": string|null,
+                  "regionLevel2": string|null,
+                  "supplyType": string|null,
+                  "houseType": string|null,
+                  "exclusiveAreaText": string|null,
+                  "exclusiveAreaValue": number|null,
+                  "depositAmountManwon": number|null,
+                  "monthlyRentAmountManwon": number|null,
+                  "salePriceMinManwon": number|null,
+                  "salePriceMaxManwon": number|null,
+                  "salePriceRaw": string|null,
+                  "supplyHouseholdCount": number|null,
+                  "rawText": string|null,
+                  "confidence": number,
+                  "sourcePage": number|null
+                }
+              ],
               "importantNotes": {"value": string|null, "confidence": number, "sourcePage": number|null},
               "incomeAssetCriteria": {"value": string|null, "confidence": number, "sourcePage": number|null},
               "contact": {"value": string|null, "confidence": number, "sourcePage": number|null},
@@ -71,6 +92,9 @@ public class GeminiClient {
             - confidence is 0.0 ~ 1.0. sourcePage starts from 1. If unknown, value=null and confidence=0.0.
             - noticeType: check keywords first — "분양전환" → "분양전환", "잔여세대" → "잔여세대", else "임대"/"분양"/"기타".
             - scheduleDetails: extract ALL schedule items as separate array entries (청약신청/순번추첨/사전개방/계약체결/상시계약 등). Do NOT collapse into one. startDate/endDate as ISO or original text. endDate null for single-date events.
+            - units: extract EVERY offerable row from tables/lists as separate array entries. One unit = one complex/site + supply type + house type + exclusive area + price/count combination. Do NOT collapse multiple rows into one representative value. Return [] if no reliable unit-level row exists.
+            - units[].rawText: include the verbatim row/table fragment used to infer that unit. Use null only when unavailable.
+            - units[].confidence is 0.0 ~ 1.0. Use lower confidence for inferred or partially missing rows.
             - applicationPeriod: keep for backward compatibility, set to the main application period value.
             - salePriceMinManwon / salePriceMaxManwon: extract from "분양가격" or "분양금액" section in 만원 units (e.g. "1억8000만원" → 18000). null for 임대 notices.
             - salePriceRaw: verbatim text of the sale price section. null for 임대 notices.

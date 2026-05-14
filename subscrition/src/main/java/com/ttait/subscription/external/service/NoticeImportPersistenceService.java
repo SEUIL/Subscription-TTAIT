@@ -9,7 +9,10 @@ import com.ttait.subscription.announcement.domain.AnnouncementDetail;
 import com.ttait.subscription.announcement.domain.AnnouncementEligibility;
 import com.ttait.subscription.announcement.domain.AnnouncementParseRaw;
 import com.ttait.subscription.announcement.domain.AnnouncementStatus;
+import com.ttait.subscription.announcement.domain.AnnouncementUnit;
+import com.ttait.subscription.announcement.domain.AnnouncementUnitSource;
 import com.ttait.subscription.announcement.domain.ConfidenceLevel;
+import com.ttait.subscription.announcement.domain.MatchSource;
 import com.ttait.subscription.announcement.domain.MaritalTargetType;
 import com.ttait.subscription.announcement.domain.SourceType;
 import com.ttait.subscription.announcement.repository.AnnouncementCategoryRepository;
@@ -17,6 +20,7 @@ import com.ttait.subscription.announcement.repository.AnnouncementDetailReposito
 import com.ttait.subscription.announcement.repository.AnnouncementEligibilityRepository;
 import com.ttait.subscription.announcement.repository.AnnouncementParseRawRepository;
 import com.ttait.subscription.announcement.repository.AnnouncementRepository;
+import com.ttait.subscription.announcement.repository.AnnouncementUnitRepository;
 import com.ttait.subscription.external.ai.dto.PdfParseResult;
 import com.ttait.subscription.external.support.AnnouncementNormalizer;
 import com.ttait.subscription.external.support.CategoryDetector;
@@ -25,9 +29,13 @@ import com.ttait.subscription.external.support.SupplyCountParser;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HexFormat;
 import java.util.List;
+import java.util.function.Function;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -44,28 +52,37 @@ public class NoticeImportPersistenceService {
     private final AnnouncementCategoryRepository announcementCategoryRepository;
     private final AnnouncementParseRawRepository announcementParseRawRepository;
     private final AnnouncementEligibilityRepository announcementEligibilityRepository;
+    private final AnnouncementUnitRepository announcementUnitRepository;
     private final AnnouncementNormalizer normalizer;
     private final CategoryDetector categoryDetector;
     private final SupplyCountParser supplyCountParser;
+    private final LhUnitCandidateExtractor lhUnitCandidateExtractor;
+    private final AnnouncementUnitSummaryService unitSummaryService;
     private final ObjectMapper objectMapper;
 
     public NoticeImportPersistenceService(AnnouncementRepository announcementRepository,
                                           AnnouncementDetailRepository announcementDetailRepository,
-                                          AnnouncementCategoryRepository announcementCategoryRepository,
-                                          AnnouncementParseRawRepository announcementParseRawRepository,
-                                          AnnouncementEligibilityRepository announcementEligibilityRepository,
-                                          AnnouncementNormalizer normalizer,
-                                          CategoryDetector categoryDetector,
-                                          SupplyCountParser supplyCountParser,
-                                          ObjectMapper objectMapper) {
+                                           AnnouncementCategoryRepository announcementCategoryRepository,
+                                           AnnouncementParseRawRepository announcementParseRawRepository,
+                                           AnnouncementEligibilityRepository announcementEligibilityRepository,
+                                           AnnouncementUnitRepository announcementUnitRepository,
+                                           AnnouncementNormalizer normalizer,
+                                           CategoryDetector categoryDetector,
+                                           SupplyCountParser supplyCountParser,
+                                           LhUnitCandidateExtractor lhUnitCandidateExtractor,
+                                           AnnouncementUnitSummaryService unitSummaryService,
+                                           ObjectMapper objectMapper) {
         this.announcementRepository = announcementRepository;
         this.announcementDetailRepository = announcementDetailRepository;
         this.announcementCategoryRepository = announcementCategoryRepository;
         this.announcementParseRawRepository = announcementParseRawRepository;
         this.announcementEligibilityRepository = announcementEligibilityRepository;
+        this.announcementUnitRepository = announcementUnitRepository;
         this.normalizer = normalizer;
         this.categoryDetector = categoryDetector;
         this.supplyCountParser = supplyCountParser;
+        this.lhUnitCandidateExtractor = lhUnitCandidateExtractor;
+        this.unitSummaryService = unitSummaryService;
         this.objectMapper = objectMapper;
     }
 
@@ -79,27 +96,28 @@ public class NoticeImportPersistenceService {
         String mergedGroupKey = panId == null ? null : "LH:" + panId;
         AnnouncementStatus status = normalizer.calculateStatus(null, endDate, text(item, "PAN_SS"));
 
-        Announcement announcement = announcementRepository
-                .findBySourcePrimaryAndSourceNoticeId(SourceType.LH, panId)
-                .orElseGet(() -> Announcement.builder()
-                        .sourcePrimary(SourceType.LH)
-                        .sourceNoticeId(panId)
-                        .noticeName(noticeName)
-                        .providerName("LH")
-                        .sourceNoticeUrl(text(item, "DTL_URL"))
-                        .sourceMobileUrl(text(item, "DTL_URL_MOB"))
-                        .noticeStatusRaw(text(item, "PAN_SS"))
-                        .noticeStatus(status)
-                        .announcementDate(announcementDate)
-                        .applicationEndDate(endDate)
-                        .regionLevel1(text(item, "CNP_CD_NM"))
-                        .supplyTypeRaw(text(item, "AIS_TP_CD_NM"))
-                        .supplyTypeNormalized(normalizer.normalizeSupplyType(text(item, "AIS_TP_CD_NM")))
-                        .matchKey(matchKey)
-                        .merged(false)
-                        .mergedGroupKey(mergedGroupKey)
-                        .collectedAt(LocalDateTime.now())
-                        .build());
+        Announcement announcement = findCanonicalSourceAnnouncement(SourceType.LH, panId);
+        if (announcement == null) {
+            announcement = Announcement.builder()
+                    .sourcePrimary(SourceType.LH)
+                    .sourceNoticeId(panId)
+                    .noticeName(noticeName)
+                    .providerName("LH")
+                    .sourceNoticeUrl(text(item, "DTL_URL"))
+                    .sourceMobileUrl(text(item, "DTL_URL_MOB"))
+                    .noticeStatusRaw(text(item, "PAN_SS"))
+                    .noticeStatus(status)
+                    .announcementDate(announcementDate)
+                    .applicationEndDate(endDate)
+                    .regionLevel1(text(item, "CNP_CD_NM"))
+                    .supplyTypeRaw(text(item, "AIS_TP_CD_NM"))
+                    .supplyTypeNormalized(normalizer.normalizeSupplyType(text(item, "AIS_TP_CD_NM")))
+                    .matchKey(matchKey)
+                    .merged(false)
+                    .mergedGroupKey(mergedGroupKey)
+                    .collectedAt(LocalDateTime.now())
+                    .build();
+        }
 
         announcement.updateFromImport(
                 noticeName, "LH",
@@ -124,8 +142,8 @@ public class NoticeImportPersistenceService {
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void upsertLhDetail(String panId, JsonNode response, PdfParseResult pdfResult, String pdfRawJson) {
-        announcementRepository.findBySourcePrimaryAndSourceNoticeId(SourceType.LH, panId)
-                .ifPresent(announcement -> {
+        Announcement announcement = findCanonicalSourceAnnouncement(SourceType.LH, panId);
+        if (announcement != null) {
                     JsonNode schedule = first(findArray(response, "dsSplScdl"));
                     JsonNode site = first(findArray(response, "dsSbd"));
                     JsonNode etc = first(findArray(response, "dsEtcInfo"));
@@ -231,10 +249,175 @@ public class NoticeImportPersistenceService {
                         saveParseRaw(announcement, "PDF_AI_JSON", pdfRawJson);
                     }
 
+                    replaceUnits(announcement, panId, response, pdfResult);
+                    unitSummaryService.applySummary(announcement);
+                    announcementRepository.save(announcement);
+
                     // 카테고리 감지
                     String combinedText = buildCombinedText(announcement, detail, pdfResult);
                     saveCategories(announcement, combinedText);
-                });
+        }
+    }
+
+    record SourcePairDuplicatePreflight(SourceType sourcePrimary, String sourceNoticeId,
+                                        Announcement canonical, List<Announcement> duplicates) {
+
+        boolean hasDuplicates() {
+            return !duplicates.isEmpty();
+        }
+
+        List<Long> duplicateIds() {
+            return duplicates.stream()
+                    .map(Announcement::getId)
+                    .toList();
+        }
+    }
+
+    private Announcement findCanonicalSourceAnnouncement(SourceType sourcePrimary, String sourceNoticeId) {
+        SourcePairDuplicatePreflight preflight = preflightSourcePairDuplicates(sourcePrimary, sourceNoticeId);
+        if (preflight.canonical() == null) {
+            return null;
+        }
+
+        Announcement canonical = preflight.canonical();
+        if (preflight.hasDuplicates()) {
+            List<Announcement> duplicates = preflight.duplicates();
+            log.warn("Detected duplicate announcement source pair sourcePrimary={} sourceNoticeId={} canonicalId={} duplicateIds={}",
+                    sourcePrimary, sourceNoticeId, canonical.getId(), preflight.duplicateIds());
+            duplicates.forEach(Announcement::retireDuplicateSourceIdentity);
+            announcementRepository.saveAll(duplicates);
+            log.warn("Cleaned {} duplicate announcements for sourcePrimary={} sourceNoticeId={} canonicalId={}",
+                    duplicates.size(), sourcePrimary, sourceNoticeId, canonical.getId());
+        }
+        return canonical;
+    }
+
+    SourcePairDuplicatePreflight preflightSourcePairDuplicates(SourceType sourcePrimary, String sourceNoticeId) {
+        List<Announcement> candidates = announcementRepository.findSourcePairCandidates(sourcePrimary, sourceNoticeId);
+        if (candidates.isEmpty()) {
+            return new SourcePairDuplicatePreflight(sourcePrimary, sourceNoticeId, null, List.of());
+        }
+        Announcement canonical = candidates.get(0);
+        List<Announcement> duplicates = candidates.size() == 1
+                ? List.of()
+                : List.copyOf(candidates.subList(1, candidates.size()));
+        return new SourcePairDuplicatePreflight(sourcePrimary, sourceNoticeId, canonical, duplicates);
+    }
+
+    private void replaceUnits(Announcement announcement, String panId, JsonNode response, PdfParseResult pdfResult) {
+        announcementUnitRepository.deleteByAnnouncementId(announcement.getId());
+
+        List<LhUnitCandidate> lhCandidates = lhUnitCandidateExtractor.extract(
+                panId,
+                response,
+                announcement.getSupplyTypeRaw(),
+                announcement.getHouseTypeRaw(),
+                announcement.getRegionLevel1());
+        List<PdfParseResult.UnitItem> pdfUnits = pdfResult != null && pdfResult.units() != null
+                ? pdfResult.units()
+                : List.of();
+        boolean[] matchedPdf = new boolean[pdfUnits.size()];
+
+        for (int i = 0; i < lhCandidates.size(); i++) {
+            LhUnitCandidate candidate = lhCandidates.get(i);
+            int pdfIndex = matchingPdfIndex(candidate, pdfUnits, matchedPdf, i, lhCandidates.size() == pdfUnits.size());
+            PdfParseResult.UnitItem pdfUnit = pdfIndex >= 0 ? pdfUnits.get(pdfIndex) : null;
+            if (pdfIndex >= 0) matchedPdf[pdfIndex] = true;
+            announcementUnitRepository.save(toAnnouncementUnit(announcement, candidate, pdfUnit));
+        }
+
+        for (int i = 0; i < pdfUnits.size(); i++) {
+            if (!matchedPdf[i]) {
+                announcementUnitRepository.save(toPdfAnnouncementUnit(announcement, pdfUnits.get(i), lhCandidates.size() + i));
+            }
+        }
+    }
+
+    private int matchingPdfIndex(LhUnitCandidate candidate,
+                                 List<PdfParseResult.UnitItem> pdfUnits,
+                                 boolean[] matchedPdf,
+                                 int rowOrder,
+                                 boolean sameCount) {
+        for (int i = 0; i < pdfUnits.size(); i++) {
+            if (!matchedPdf[i] && matches(candidate, pdfUnits.get(i))) {
+                return i;
+            }
+        }
+        if (sameCount && rowOrder < pdfUnits.size() && !matchedPdf[rowOrder]) {
+            return rowOrder;
+        }
+        return -1;
+    }
+
+    private boolean matches(LhUnitCandidate candidate, PdfParseResult.UnitItem unit) {
+        boolean addressMatch = candidate.fullAddress() != null && unit.address() != null
+                && candidate.fullAddress().equals(unit.address());
+        boolean complexMatch = candidate.complexName() != null && unit.complexName() != null
+                && candidate.complexName().equals(unit.complexName());
+        boolean areaMatch = candidate.exclusiveAreaText() != null && unit.exclusiveAreaText() != null
+                && candidate.exclusiveAreaText().replace("㎡", "").trim().equals(unit.exclusiveAreaText().replace("㎡", "").trim());
+        return (addressMatch || complexMatch) && (areaMatch || unit.exclusiveAreaText() == null);
+    }
+
+    private AnnouncementUnit toAnnouncementUnit(Announcement announcement,
+                                                LhUnitCandidate candidate,
+                                                PdfParseResult.UnitItem pdfUnit) {
+        String houseTypeRaw = firstNonBlank(value(pdfUnit, PdfParseResult.UnitItem::houseType), candidate.houseTypeRaw());
+        return AnnouncementUnit.builder()
+                .announcement(announcement)
+                .unitSource(pdfUnit == null ? AnnouncementUnitSource.LH_API : AnnouncementUnitSource.MERGED)
+                .sourceUnitKey(candidate.sourceUnitKey())
+                .unitOrder(candidate.unitOrder())
+                .complexName(firstNonBlank(value(pdfUnit, PdfParseResult.UnitItem::complexName), candidate.complexName()))
+                .fullAddress(firstNonBlank(value(pdfUnit, PdfParseResult.UnitItem::address), candidate.fullAddress()))
+                .regionLevel1(firstNonBlank(value(pdfUnit, PdfParseResult.UnitItem::regionLevel1), candidate.regionLevel1()))
+                .regionLevel2(firstNonBlank(value(pdfUnit, PdfParseResult.UnitItem::regionLevel2), candidate.regionLevel2()))
+                .supplyTypeRaw(firstNonBlank(value(pdfUnit, PdfParseResult.UnitItem::supplyType), candidate.supplyTypeRaw()))
+                .supplyTypeNormalized(normalizer.normalizeSupplyType(firstNonBlank(value(pdfUnit, PdfParseResult.UnitItem::supplyType), candidate.supplyTypeRaw())))
+                .houseTypeRaw(houseTypeRaw)
+                .houseTypeNormalized(normalizer.normalizeHouseType(houseTypeRaw))
+                .exclusiveAreaText(firstNonBlank(value(pdfUnit, PdfParseResult.UnitItem::exclusiveAreaText), candidate.exclusiveAreaText()))
+                .exclusiveAreaValue(pdfUnit != null && pdfUnit.exclusiveAreaValue() != null ? BigDecimal.valueOf(pdfUnit.exclusiveAreaValue()) : candidate.exclusiveAreaValue())
+                .depositAmount(pdfUnit != null ? pdfUnit.depositAmountManwon() : null)
+                .monthlyRentAmount(pdfUnit != null ? pdfUnit.monthlyRentAmountManwon() : null)
+                .salePriceMin(pdfUnit != null ? pdfUnit.salePriceMinManwon() : null)
+                .salePriceMax(pdfUnit != null ? pdfUnit.salePriceMaxManwon() : null)
+                .salePriceRaw(pdfUnit != null ? pdfUnit.salePriceRaw() : null)
+                .supplyHouseholdCount(pdfUnit != null && pdfUnit.supplyHouseholdCount() != null ? pdfUnit.supplyHouseholdCount() : candidate.supplyHouseholdCount())
+                .rawText(pdfUnit != null && pdfUnit.rawText() != null ? pdfUnit.rawText() : candidate.rawText())
+                .matchSource(pdfUnit == null ? MatchSource.RULE : MatchSource.AI)
+                .confidenceLevel(pdfUnit == null ? ConfidenceLevel.HIGH : confidence(pdfUnit.confidence()))
+                .build();
+    }
+
+    private AnnouncementUnit toPdfAnnouncementUnit(Announcement announcement, PdfParseResult.UnitItem unit, int order) {
+        String supplyTypeRaw = unit.supplyType();
+        String houseTypeRaw = unit.houseType();
+        return AnnouncementUnit.builder()
+                .announcement(announcement)
+                .unitSource(AnnouncementUnitSource.PDF_AI)
+                .sourceUnitKey("pdf-" + sha256(order + "|" + nullToEmpty(unit.rawText())).substring(0, 28))
+                .unitOrder(order)
+                .complexName(unit.complexName())
+                .fullAddress(unit.address())
+                .regionLevel1(unit.regionLevel1())
+                .regionLevel2(unit.regionLevel2())
+                .supplyTypeRaw(supplyTypeRaw)
+                .supplyTypeNormalized(normalizer.normalizeSupplyType(supplyTypeRaw))
+                .houseTypeRaw(houseTypeRaw)
+                .houseTypeNormalized(normalizer.normalizeHouseType(houseTypeRaw))
+                .exclusiveAreaText(unit.exclusiveAreaText())
+                .exclusiveAreaValue(unit.exclusiveAreaValue() != null ? BigDecimal.valueOf(unit.exclusiveAreaValue()) : null)
+                .depositAmount(unit.depositAmountManwon())
+                .monthlyRentAmount(unit.monthlyRentAmountManwon())
+                .salePriceMin(unit.salePriceMinManwon())
+                .salePriceMax(unit.salePriceMaxManwon())
+                .salePriceRaw(unit.salePriceRaw())
+                .supplyHouseholdCount(unit.supplyHouseholdCount())
+                .rawText(unit.rawText())
+                .matchSource(MatchSource.AI)
+                .confidenceLevel(confidence(unit.confidence()))
+                .build();
     }
 
     private void saveEligibility(Announcement announcement, PdfParseResult pdfResult) {
@@ -276,6 +459,34 @@ public class NoticeImportPersistenceService {
                                         .build()
                         )
                 );
+    }
+
+    private String value(PdfParseResult.UnitItem unit, Function<PdfParseResult.UnitItem, String> getter) {
+        return unit == null ? null : getter.apply(unit);
+    }
+
+    private String firstNonBlank(String first, String second) {
+        return first != null && !first.isBlank() ? first : second;
+    }
+
+    private ConfidenceLevel confidence(Double confidence) {
+        if (confidence == null) return ConfidenceLevel.LOW;
+        if (confidence >= 0.8) return ConfidenceLevel.HIGH;
+        if (confidence >= 0.5) return ConfidenceLevel.MEDIUM;
+        return ConfidenceLevel.LOW;
+    }
+
+    private String sha256(String value) {
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            return HexFormat.of().formatHex(digest.digest(value.getBytes(StandardCharsets.UTF_8)));
+        } catch (Exception e) {
+            throw new IllegalStateException("Failed to build unit key", e);
+        }
+    }
+
+    private String nullToEmpty(String value) {
+        return value == null ? "" : value;
     }
 
     private void saveParseRaw(Announcement announcement, String rawType, String rawText) {

@@ -1,5 +1,6 @@
 package com.ttait.subscription.admin.service;
 
+import com.ttait.subscription.admin.dto.AdminAnnouncementUnitResponse;
 import com.ttait.subscription.admin.dto.AdminReviewDetailResponse;
 import com.ttait.subscription.admin.dto.AdminReviewListResponse;
 import com.ttait.subscription.admin.dto.AdminReviewRequest;
@@ -12,10 +13,12 @@ import com.ttait.subscription.announcement.domain.ParseReviewStatus;
 import com.ttait.subscription.announcement.repository.AnnouncementDetailRepository;
 import com.ttait.subscription.announcement.repository.AnnouncementEligibilityRepository;
 import com.ttait.subscription.announcement.repository.AnnouncementRepository;
+import com.ttait.subscription.announcement.repository.AnnouncementUnitRepository;
 import com.ttait.subscription.common.exception.ApiException;
 import com.ttait.subscription.external.service.NoticeImportOrchestrator;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
@@ -35,15 +38,18 @@ public class AdminReviewService {
     private final AnnouncementRepository announcementRepository;
     private final AnnouncementDetailRepository announcementDetailRepository;
     private final AnnouncementEligibilityRepository eligibilityRepository;
+    private final AnnouncementUnitRepository announcementUnitRepository;
     private final NoticeImportOrchestrator orchestrator;
 
     public AdminReviewService(AnnouncementRepository announcementRepository,
-                              AnnouncementDetailRepository announcementDetailRepository,
-                              AnnouncementEligibilityRepository eligibilityRepository,
-                              NoticeImportOrchestrator orchestrator) {
+                               AnnouncementDetailRepository announcementDetailRepository,
+                               AnnouncementEligibilityRepository eligibilityRepository,
+                               AnnouncementUnitRepository announcementUnitRepository,
+                               NoticeImportOrchestrator orchestrator) {
         this.announcementRepository = announcementRepository;
         this.announcementDetailRepository = announcementDetailRepository;
         this.eligibilityRepository = eligibilityRepository;
+        this.announcementUnitRepository = announcementUnitRepository;
         this.orchestrator = orchestrator;
     }
 
@@ -68,7 +74,12 @@ public class AdminReviewService {
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "eligibility not found for announcement " + announcementId));
         AnnouncementDetail detail = announcementDetailRepository.findByAnnouncementIdAndDeletedFalse(announcementId)
                 .orElse(null);
-        return AdminReviewDetailResponse.from(announcement, detail, eligibility);
+        List<AdminAnnouncementUnitResponse> units = announcementUnitRepository
+                .findByAnnouncementIdAndDeletedFalseOrderByUnitOrderAsc(announcementId)
+                .stream()
+                .map(AdminAnnouncementUnitResponse::from)
+                .toList();
+        return AdminReviewDetailResponse.from(announcement, detail, eligibility, units);
     }
 
     // 검수 액션 분기 처리

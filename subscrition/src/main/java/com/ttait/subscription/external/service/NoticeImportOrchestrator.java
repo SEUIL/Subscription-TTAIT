@@ -1,6 +1,7 @@
 package com.ttait.subscription.external.service;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ttait.subscription.announcement.domain.Announcement;
@@ -11,6 +12,7 @@ import com.ttait.subscription.common.exception.ApiException;
 import com.ttait.subscription.external.ai.dto.PdfParseResult;
 import com.ttait.subscription.external.lh.LhApiClient;
 import com.ttait.subscription.external.pdf.PdfParsingService;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -25,30 +27,148 @@ public class NoticeImportOrchestrator {
     private final LhApiClient lhApiClient;
     private final NoticeImportPersistenceService persistenceService;
     private final PdfParsingService pdfParsingService;
+    private final LhImportDedupeDecisionService dedupeDecisionService;
     private final ObjectMapper objectMapper;
     private final AnnouncementRepository announcementRepository;
     private final AnnouncementParseRawRepository announcementParseRawRepository;
 
     public NoticeImportOrchestrator(LhApiClient lhApiClient,
-                                    NoticeImportPersistenceService persistenceService,
-                                    PdfParsingService pdfParsingService,
-                                    ObjectMapper objectMapper,
-                                    AnnouncementRepository announcementRepository,
-                                    AnnouncementParseRawRepository announcementParseRawRepository) {
+                                     NoticeImportPersistenceService persistenceService,
+                                     PdfParsingService pdfParsingService,
+                                     LhImportDedupeDecisionService dedupeDecisionService,
+                                     ObjectMapper objectMapper,
+                                     AnnouncementRepository announcementRepository,
+                                     AnnouncementParseRawRepository announcementParseRawRepository) {
         this.lhApiClient = lhApiClient;
         this.persistenceService = persistenceService;
         this.pdfParsingService = pdfParsingService;
+        this.dedupeDecisionService = dedupeDecisionService;
         this.objectMapper = objectMapper;
         this.announcementRepository = announcementRepository;
         this.announcementParseRawRepository = announcementParseRawRepository;
     }
 
-    public record ImportResult(int imported, int failed) {
+    public record ImportResult(
+            int imported,
+            int failed,
+            @JsonIgnore int fetched,
+            @JsonIgnore int scanned,
+            @JsonIgnore int skippedLand,
+            @JsonIgnore int unchanged,
+            @JsonIgnore int geminiSkipped,
+            @JsonIgnore int reparsed,
+            @JsonIgnore boolean endOfList
+    ) {
+
+        public ImportResult(int imported, int failed) {
+            this(imported, failed, 0, 0, 0, 0, 0, 0, false);
+        }
+    }
+
+    public record PreparedLhNotice(JsonNode item, JsonNode detailResponse) {
+    }
+
+    public record CandidateScanResult(LhImportDedupeDecision decision, String pdfUrl) {
+    }
+
+    enum ImportMode {
+        SCHEDULER(false),
+        LEGACY_ADMIN(false),
+        SELECTED_ADMIN(false),
+        FORCE_ADMIN(true);
+
+        private final boolean force;
+
+        ImportMode(boolean force) {
+            this.force = force;
+        }
+    }
+
+    private record ImportOptions(ImportMode mode, boolean force) {
+
+        private static ImportOptions from(ImportMode mode) {
+            ImportMode resolvedMode = mode == null ? ImportMode.LEGACY_ADMIN : mode;
+            return new ImportOptions(resolvedMode, resolvedMode.force);
+        }
     }
 
     public ImportResult importLhNotices(int page, int size) {
+        return importLhNotices(page, size, ImportMode.LEGACY_ADMIN);
+    }
+
+    public ImportResult importLhNoticesForScheduler(int page, int size) {
+        return importLhNotices(page, size, ImportMode.SCHEDULER);
+    }
+
+    public ImportResult importPreparedLhNotices(List<PreparedLhNotice> notices, boolean force) {
+        if (notices == null || notices.isEmpty()) {
+            return new ImportResult(0, 0, 0, 0, 0, 0, 0, 0, false);
+        }
+
+        ImportOptions options = new ImportOptions(force ? ImportMode.FORCE_ADMIN : ImportMode.SELECTED_ADMIN, force);
         AtomicInteger imported = new AtomicInteger(0);
         AtomicInteger failed = new AtomicInteger(0);
+        AtomicInteger skippedLand = new AtomicInteger(0);
+        AtomicInteger unchanged = new AtomicInteger(0);
+        AtomicInteger geminiSkipped = new AtomicInteger(0);
+        AtomicInteger reparsed = new AtomicInteger(0);
+
+        for (PreparedLhNotice notice : notices) {
+            try {
+                CandidateScanResult scan = scanLhCandidate(notice.item(), notice.detailResponse(), force);
+                if (scan.decision().decision() == LhImportDecisionType.LAND_SKIP) {
+                    skippedLand.incrementAndGet();
+                    continue;
+                }
+
+                ImportItemOutcome outcome = processPreparedLhItem(notice.item(), notice.detailResponse(), options);
+                if (outcome.imported()) {
+                    imported.incrementAndGet();
+                }
+                if (outcome.unchanged()) {
+                    unchanged.incrementAndGet();
+                }
+                if (outcome.geminiSkipped()) {
+                    geminiSkipped.incrementAndGet();
+                }
+                if (outcome.reparsed()) {
+                    reparsed.incrementAndGet();
+                }
+            } catch (Exception e) {
+                String panId = notice.item() == null ? "unknown" : notice.item().path("PAN_ID").asText("unknown");
+                log.error("Failed to process prepared LH notice panId={} mode={}", panId, options.mode(), e);
+                failed.incrementAndGet();
+            }
+        }
+
+        int scanned = notices.size();
+        return new ImportResult(
+                imported.get(),
+                failed.get(),
+                scanned,
+                scanned,
+                skippedLand.get(),
+                unchanged.get(),
+                geminiSkipped.get(),
+                reparsed.get(),
+                false
+        );
+    }
+
+    public CandidateScanResult scanLhCandidate(JsonNode item, JsonNode detailResponse, boolean force) {
+        String pdfUrl = extractPdfUrl(detailResponse);
+        return new CandidateScanResult(dedupeDecisionService.decide(item, detailResponse, pdfUrl, force), pdfUrl);
+    }
+
+    ImportResult importLhNotices(int page, int size, ImportMode mode) {
+        ImportOptions options = ImportOptions.from(mode);
+        AtomicInteger imported = new AtomicInteger(0);
+        AtomicInteger failed = new AtomicInteger(0);
+        AtomicInteger scanned = new AtomicInteger(0);
+        AtomicInteger skippedLand = new AtomicInteger(0);
+        AtomicInteger unchanged = new AtomicInteger(0);
+        AtomicInteger geminiSkipped = new AtomicInteger(0);
+        AtomicInteger reparsed = new AtomicInteger(0);
 
         try {
             JsonNode response = lhApiClient.fetchNoticeList(page, size);
@@ -56,21 +176,39 @@ public class NoticeImportOrchestrator {
 
             if (dsList == null) {
                 log.warn("LH API returned empty dsList for page={}", page);
-                return new ImportResult(0, 0);
+                return new ImportResult(0, 0, 0, 0, 0, 0, 0, 0, true);
+            }
+
+            if (dsList.isEmpty()) {
+                return new ImportResult(0, 0, 0, 0, 0, 0, 0, 0, true);
             }
 
             for (JsonNode item : dsList) {
-                String uppAisTpCd = item.path("UPP_AIS_TP_CD").asText("");
-                if ("01".equals(uppAisTpCd)) { // 토지(01): 주택 서비스 대상 아님
-                    log.debug("Skipping land notice panId={}", item.path("PAN_ID").asText());
+                scanned.incrementAndGet();
+                LhImportDedupeDecision landDecision = dedupeDecisionService.decide(item, null, null, options.force());
+                if (landDecision.decision() == LhImportDecisionType.LAND_SKIP) {
+                    skippedLand.incrementAndGet();
+                    log.debug("Skipping LH notice panId={} decision={} reason={}",
+                            landDecision.panId(), landDecision.decision(), landDecision.reason());
                     continue;
                 }
                 try {
-                    processLhItem(item);
-                    imported.incrementAndGet();
+                    ImportItemOutcome outcome = processLhItem(item, options);
+                    if (outcome.imported()) {
+                        imported.incrementAndGet();
+                    }
+                    if (outcome.unchanged()) {
+                        unchanged.incrementAndGet();
+                    }
+                    if (outcome.geminiSkipped()) {
+                        geminiSkipped.incrementAndGet();
+                    }
+                    if (outcome.reparsed()) {
+                        reparsed.incrementAndGet();
+                    }
                 } catch (Exception e) {
                     String panId = item.path("PAN_ID").asText("unknown");
-                    log.error("Failed to process LH notice panId={}", panId, e);
+                    log.error("Failed to process LH notice panId={} mode={}", panId, options.mode(), e);
                     failed.incrementAndGet();
                 }
             }
@@ -79,37 +217,92 @@ public class NoticeImportOrchestrator {
             log.error("LH list fetch failed for page={}", page, e);
         }
 
-        return new ImportResult(imported.get(), failed.get());
+        return new ImportResult(
+                imported.get(),
+                failed.get(),
+                scanned.get(),
+                scanned.get(),
+                skippedLand.get(),
+                unchanged.get(),
+                geminiSkipped.get(),
+                reparsed.get(),
+                false
+        );
     }
 
-    private void processLhItem(JsonNode item) {
-        Announcement announcement = persistenceService.upsertLh(item);
-
+    private ImportItemOutcome processLhItem(JsonNode item, ImportOptions options) {
         String panId = persistenceService.text(item, "PAN_ID");
         String ccrCnntSysDsCd = persistenceService.text(item, "CCR_CNNT_SYS_DS_CD");
         String splInfTpCd = persistenceService.text(item, "SPL_INF_TP_CD");
 
         if (panId == null || ccrCnntSysDsCd == null || splInfTpCd == null) {
             log.warn("Missing LH detail params for panId={}", panId);
-            return;
+            return ImportItemOutcome.skippedGemini();
         }
 
         JsonNode detailResponse = lhApiClient.fetchNoticeDetail(panId, ccrCnntSysDsCd, splInfTpCd);
+        return processPreparedLhItem(item, detailResponse, options);
+    }
 
-        // PDF 첨부파일 URL 추출
-        String pdfUrl = extractPdfUrl(detailResponse);
+    private ImportItemOutcome processPreparedLhItem(JsonNode item, JsonNode detailResponse, ImportOptions options) {
+        String panId = persistenceService.text(item, "PAN_ID");
+        CandidateScanResult scan = scanLhCandidate(item, detailResponse, options.force());
+        LhImportDedupeDecision decision = scan.decision();
+        String pdfUrl = scan.pdfUrl();
+        if (!decision.shouldPersistOfficial() || shouldPreserveParsedDataWithoutParsing(decision)) {
+            dedupeDecisionService.recordChecked(decision);
+            log.info("Skipping LH import persistence panId={} mode={} decision={} reason={}",
+                    panId, options.mode(), decision.decision(), decision.reason());
+            return ImportItemOutcome.skipped(decision);
+        }
+
+        Announcement announcement = persistenceService.upsertLh(item);
         PdfParseResult pdfResult = null;
         String pdfRawJson = null;
 
-        if (pdfUrl != null) {
+        if (decision.shouldParseGemini()) {
             log.info("PDF found for panId={}: {}", panId, pdfUrl);
-            pdfResult = pdfParsingService.parse(pdfUrl);
-            if (pdfResult != null) {
-                pdfRawJson = safeJson(pdfResult);
+            try {
+                pdfResult = pdfParsingService.parse(pdfUrl);
+                if (pdfResult != null) {
+                    pdfRawJson = safeJson(pdfResult);
+                }
+            } catch (RuntimeException e) {
+                dedupeDecisionService.recordFailure(announcement, decision, e.getMessage());
+                throw e;
             }
         }
 
         persistenceService.upsertLhDetail(panId, detailResponse, pdfResult, pdfRawJson);
+        if (decision.shouldParseGemini() && pdfResult == null) {
+            dedupeDecisionService.recordFailure(announcement, decision, "Gemini parse returned no result");
+        } else {
+            dedupeDecisionService.recordSuccess(announcement, decision, pdfRawJson);
+        }
+        return ImportItemOutcome.imported(decision);
+    }
+
+    private record ImportItemOutcome(boolean imported, boolean unchanged, boolean geminiSkipped, boolean reparsed) {
+
+        private static ImportItemOutcome skipped(LhImportDedupeDecision decision) {
+            boolean unchanged = decision.decision() == LhImportDecisionType.UNCHANGED_SKIP_GEMINI;
+            return new ImportItemOutcome(false, unchanged, !decision.shouldParseGemini(), false);
+        }
+
+        private static ImportItemOutcome skippedGemini() {
+            return new ImportItemOutcome(false, false, true, false);
+        }
+
+        private static ImportItemOutcome imported(LhImportDedupeDecision decision) {
+            boolean reparsed = decision.decision() == LhImportDecisionType.CHANGED_REPARSE
+                    || decision.decision() == LhImportDecisionType.FAILED_RETRY
+                    || decision.decision() == LhImportDecisionType.FORCE_REPARSE;
+            return new ImportItemOutcome(true, false, !decision.shouldParseGemini(), reparsed);
+        }
+    }
+
+    private boolean shouldPreserveParsedDataWithoutParsing(LhImportDedupeDecision decision) {
+        return decision.preserveExistingParsedData() && !decision.shouldParseGemini();
     }
 
     private String extractPdfUrl(JsonNode detailResponse) {
@@ -159,18 +352,29 @@ public class NoticeImportOrchestrator {
 
         JsonNode detailResponse = lhApiClient.fetchNoticeDetail(panId, ccrCnntSysDsCd, splInfTpCd);
         String pdfUrl = extractPdfUrl(detailResponse);
+        LhImportDedupeDecision decision = dedupeDecisionService.decide(item, detailResponse, pdfUrl, true);
         PdfParseResult pdfResult = null;
         String pdfRawJson = null;
 
-        if (pdfUrl != null) {
+        if (decision.shouldParseGemini()) {
             log.info("Reimport PDF for announcementId={}: {}", announcementId, pdfUrl);
-            pdfResult = pdfParsingService.parse(pdfUrl);
-            if (pdfResult != null) {
-                pdfRawJson = safeJson(pdfResult);
+            try {
+                pdfResult = pdfParsingService.parse(pdfUrl);
+                if (pdfResult != null) {
+                    pdfRawJson = safeJson(pdfResult);
+                }
+            } catch (RuntimeException e) {
+                dedupeDecisionService.recordFailure(announcement, decision, e.getMessage());
+                throw e;
             }
         }
 
         persistenceService.upsertLhDetail(panId, detailResponse, pdfResult, pdfRawJson);
+        if (decision.shouldParseGemini() && pdfResult == null) {
+            dedupeDecisionService.recordFailure(announcement, decision, "Gemini parse returned no result");
+        } else {
+            dedupeDecisionService.recordSuccess(announcement, decision, pdfRawJson);
+        }
     }
 
     private String safeJson(Object obj) {

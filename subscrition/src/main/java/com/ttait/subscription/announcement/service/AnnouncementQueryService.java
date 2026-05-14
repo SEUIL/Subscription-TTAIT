@@ -48,9 +48,9 @@ public class AnnouncementQueryService {
     private final AnnouncementNormalizer announcementNormalizer;
 
     public AnnouncementQueryService(AnnouncementRepository announcementRepository,
-                                    AnnouncementDetailRepository announcementDetailRepository,
-                                    AnnouncementCategoryRepository announcementCategoryRepository,
-                                    AnnouncementNormalizer announcementNormalizer) {
+                                     AnnouncementDetailRepository announcementDetailRepository,
+                                     AnnouncementCategoryRepository announcementCategoryRepository,
+                                     AnnouncementNormalizer announcementNormalizer) {
         this.announcementRepository = announcementRepository;
         this.announcementDetailRepository = announcementDetailRepository;
         this.announcementCategoryRepository = announcementCategoryRepository;
@@ -75,8 +75,7 @@ public class AnnouncementQueryService {
                         Pageable.unpaged())
                 .getContent();
         Map<Long, Set<CategoryCode>> categoryMap = loadCategoryMap(extractIds(announcements));
-
-        List<AnnouncementListItemResponse> filtered = announcements.stream()
+        List<Announcement> filtered = announcements.stream()
                 .filter(announcement -> matchesRegionLevel1(announcement, regionLevel1))
                 .filter(announcement -> matchesRegionLevel2(announcement, regionLevel2))
                 .filter(announcement -> matchesSupplyType(announcement, supplyType))
@@ -91,7 +90,6 @@ public class AnnouncementQueryService {
                         .comparing(Announcement::getApplicationEndDate,
                                 Comparator.nullsLast(Comparator.naturalOrder()))
                         .thenComparing(Announcement::getId, Comparator.reverseOrder()))
-                .map(this::toListItem)
                 .toList();
 
         int start = (int) pageable.getOffset();
@@ -100,7 +98,11 @@ public class AnnouncementQueryService {
         }
 
         int end = Math.min(start + pageable.getPageSize(), filtered.size());
-        return new PageImpl<>(filtered.subList(start, end), pageable, filtered.size());
+        List<Announcement> pageAnnouncements = filtered.subList(start, end);
+        List<AnnouncementListItemResponse> content = pageAnnouncements.stream()
+                .map(this::toListItem)
+                .toList();
+        return new PageImpl<>(content, pageable, filtered.size());
     }
 
     public AnnouncementDetailResponse getAnnouncementDetail(Long announcementId) {

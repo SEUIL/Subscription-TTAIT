@@ -34,5 +34,5 @@
 - demo 프론트: `demo/frontEnd/app`
 - 메인 백엔드: `subscrition/src/main/java/com/ttait/subscription`
 - 메인 참고 문서:
-  - `subscrition/명세서 및 참고파일 모음/PROJECT_ANALYSIS.md`
-  - `subscrition/명세서 및 참고파일 모음/API_IMPORT_FEATURE.md`
+  - `subscrition/docs/프로젝트 초기 문서_김재민/이전_프로젝트분석_초기문서.md`
+  - `subscrition/docs/API수집/현행_LH공고수집_PDF_AI파싱_기능명세.md`
