@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>집구해 관리자 LH Import 디자인 핸드오프</title>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" crossorigin="anonymous"></script>
+<style>
+@font-face {
+  font-family: 'Noto Sans KR';
+  src: url('../../fonts/NotoSansKR-VariableFont_wght.ttf') format('truetype');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+* { box-sizing: border-box; }
+body { margin: 0; font-family: 'Noto Sans KR', -apple-system, system-ui, sans-serif; background: #f2f2f2; color:#222; }
+.file-warning { display:none; margin:20px auto 0; padding:16px; max-width:900px; border-radius:16px; background:#fff0f3; line-height:1.6; }
+.handoff-nav { position:sticky; top:0; z-index:200; background:#fff; border-bottom:1px solid rgba(0,0,0,.08); }
+.handoff-nav-inner { max-width:1280px; margin:0 auto; padding:12px 24px; display:flex; gap:12px; align-items:center; }
+.handoff-logo { width:32px; height:32px; border-radius:8px; background:#ff385c; color:#fff; display:flex; align-items:center; justify-content:center; font-weight:900; }
+.handoff-title { font-weight:900; font-size:14px; }
+.handoff-sub { color:#6a6a6a; font-size:12px; }
+.handoff-tabs { margin-left:auto; display:flex; gap:6px; flex-wrap:wrap; }
+.handoff-tab { border:none; border-radius:10px; padding:9px 13px; font-family:inherit; font-weight:900; cursor:pointer; color:#6a6a6a; background:#f2f2f2; }
+.handoff-tab.active { background:#222; color:#fff; }
+@media (max-width: 720px) {
+  .handoff-nav-inner { padding:12px 16px; align-items:flex-start; flex-wrap:wrap; }
+  .handoff-tabs { width:100%; margin-left:0; }
+}
+</style>
+</head>
+<body>
+<div id="file-warning" class="file-warning">
+  <strong>로컬 서버로 실행해주세요.</strong><br />
+  JSX 파일을 불러오는 목업입니다. 프로젝트 루트에서 <code>python -m http.server 8000</code> 실행 후
+  <code>http://localhost:8000/ui_kits/web/admin_handoff.html</code>로 확인하세요.
+</div>
+<div id="root"></div>
+<script>
+  if (location.protocol === 'file:') document.getElementById('file-warning').style.display = 'block';
+</script>
+<script type="text/babel" src="AdminImportPage.jsx"></script>
+<script type="text/babel" src="AdminReviewUnitsSection.jsx"></script>
+<script type="text/babel">
+const HandoffApp = () => {
+  const [tab, setTab] = React.useState('import');
+  const tabs = [
+    ['import', 'LH import 콘솔'],
+    ['units', '검수 상세 units'],
+  ];
+  return (
+    <>
+      <nav className="handoff-nav">
+        <div className="handoff-nav-inner">
+          <div className="handoff-logo">집</div>
+          <div>
+            <div className="handoff-title">관리자 LH 후보 import 디자인 핸드오프</div>
+            <div className="handoff-sub">API 연동 전 UI 목업 · 집구해 디자인 시스템 기반</div>
+          </div>
+          <div className="handoff-tabs">
+            {tabs.map(([id, label]) => (
+              <button key={id} className={`handoff-tab ${tab === id ? 'active' : ''}`} onClick={() => setTab(id)}>{label}</button>
+            ))}
+          </div>
+        </div>
+      </nav>
+      {tab === 'import' ? (
+        <AdminImportPage onReviewClick={() => setTab('units')} onDashboardClick={() => alert('대시보드 이동 자리표시자입니다.')} />
+      ) : (
+        <AdminReviewUnitsPage />
+      )}
+    </>
+  );
+};
+ReactDOM.createRoot(document.getElementById('root')).render(<HandoffApp />);
+</script>
+</body>
+</html>

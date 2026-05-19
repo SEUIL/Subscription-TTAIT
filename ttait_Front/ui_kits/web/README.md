@@ -30,3 +30,16 @@ avatar (→ My Page), back buttons, and card clicks.
 - Brand red: #ff385c
 - Three-layer card shadow for all elevated surfaces
 - Components are cosmetic-only — no real API calls
+
+## 관리자 LH 후보 import 핸드오프
+
+프론트 연동 전 관리자 화면 디자인 목업이 추가되었습니다.
+
+| 파일 | 설명 |
+|---|---|
+| `admin_handoff.html` | LH 후보 import 콘솔 + 검수 상세 units 섹션 확인용 진입점 |
+| `AdminImportPage.jsx` | `/admin/import` 후보 수집/목록/선택 import/결과/force 모달 목업 |
+| `AdminReviewUnitsSection.jsx` | `AdminReviewDetailPage`의 `units[]` 검수 섹션 목업 |
+| `ADMIN_LH_IMPORT_HANDOFF.md` | 다음 프론트 작업자용 이식 메모 |
+
+확인 URL: 로컬 서버 실행 후 `http://localhost:8000/ui_kits/web/admin_handoff.html`

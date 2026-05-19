@@ -90,6 +90,11 @@ Base 8px unit. Key values: 4, 8, 12, 16, 20, 24, 32, 40, 48, 64, 80px.
 ### Shadows
 Three-layer card shadow (all elevated surfaces):
 ```
+| `ui_kits/web/AdminImportPage.jsx` | `/admin/import` 후보 수집/목록/선택 import/결과/force 모달 목업 |
+| `ui_kits/web/AdminReviewUnitsSection.jsx` | `AdminReviewDetailPage`의 `units[]` 검수 섹션 목업 |
+| `ui_kits/web/ADMIN_LH_IMPORT_HANDOFF.md` | 다음 프론트 작업자용 이식 메모 |
+
+확인 URL: 로컬 서버 실행 후 `http://localhost:8000/ui_kits/web/admin_handoff.html`
 rgba(0,0,0,0.02) 0px 0px 0px 1px,
 rgba(0,0,0,0.04) 0px 2px 6px,
 rgba(0,0,0,0.1) 0px 4px 8px
@@ -172,3 +177,16 @@ ui_kits/
     AuthPage.jsx
     MyPage.jsx
 ```
+
+## 관리자 LH 후보 import 핸드오프
+
+프론트 연동 전 관리자 화면 디자인 목업이 추가되었습니다.
+
+| 파일 | 설명 |
+|---|---|
+| `ui_kits/web/admin_handoff.html` | LH 후보 import 콘솔 + 검수 상세 units 섹션 확인용 진입점 |
+| `ui_kits/web/AdminImportPage.jsx` | `/admin/import` 후보 수집/목록/선택 import/결과/force 모달 목업 |
+| `ui_kits/web/AdminReviewUnitsSection.jsx` | `AdminReviewDetailPage`의 `units[]` 검수 섹션 목업 |
+| `ui_kits/web/ADMIN_LH_IMPORT_HANDOFF.md` | 다음 프론트 작업자용 이식 메모 |
+
+확인 URL: 로컬 서버 실행 후 `http://localhost:8000/ui_kits/web/admin_handoff.html`
