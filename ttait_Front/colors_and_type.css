@@ -45,6 +45,13 @@
   --tag-green:        #166534;
   --tag-orange:       #c2410c;
 
+  /* Admin LH import / review semantics */
+  --admin-import-candidate-bg: #eff6ff;     /* lh_import_candidate collection/read steps */
+  --admin-import-selected-bg:  #fff0f3;     /* selected import / primary operation */
+  --admin-import-skip-bg:      #f2f2f2;     /* unchanged / Gemini skipped */
+  --admin-import-reparse-bg:   #fff7ed;     /* changed / force reparse */
+  --admin-review-approved-bg:  #f0fdf4;     /* APPROVED/CORRECTED public eligible */
+
   /* Shadows */
   --shadow-card:
     rgba(0,0,0,0.02) 0px 0px 0px 1px,

@@ -10,6 +10,17 @@
 
 현행 백엔드는 LH 공고 수집 흐름이 아래처럼 바뀌었다.
 
+
+### Backend contract summary
+
+- Candidate collection stores candidates in `lh_import_candidate` only.
+- Candidate collection/list APIs must not call Gemini.
+- Selected import stores or updates only the `candidateIds` as formal `announcement` rows.
+- During selected import, `dedupeStatus` and `fingerprint` decide whether Gemini is called or skipped.
+- Successful import does not mean public exposure. Public APIs show only `announcement_eligibility.reviewStatus` = `APPROVED` or `CORRECTED`.
+- `AdminReviewDetailPage.units[]` is admin review data based on `announcement_unit`.
+- `rawText` and `sourceUnitKey` are admin-only fields and must not be exposed in public screens.
+
 ```text
 기존: LH 전체 import 한 번 실행
 현재: 후보 수집 -> 후보 목록 확인 -> 선택 import -> 검수 -> 승인

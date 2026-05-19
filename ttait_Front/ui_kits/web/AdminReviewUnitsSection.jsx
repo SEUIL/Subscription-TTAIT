@@ -1,5 +1,5 @@
 // AdminReviewUnitsSection.jsx — 관리자 검수 상세의 공급 단위 검수 섹션 목업
-// public 화면이 아닌 AdminReviewDetailPage 전용 패턴입니다.
+// AdminReviewDetailPage-only mock based on announcement_unit. rawText/sourceUnitKey are admin-only.
 
 const REVIEW_UNITS = [
   {

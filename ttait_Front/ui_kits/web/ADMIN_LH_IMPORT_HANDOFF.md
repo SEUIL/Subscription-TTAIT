@@ -33,6 +33,15 @@ python -m http.server 8000
 - 카드: 20px radius + 기존 3-layer shadow
 - 배지: pill 형태, status/dedupe/confidence/source별 semantic tint
 
+## Backend integration contract
+
+- Collect candidates: save to `lh_import_candidate`; no Gemini call.
+- List candidates: read/filter saved candidates; no Gemini call.
+- Selected import: save/update only selected `candidateIds` as `announcement`.
+- Gemini decision: based on `dedupeStatus` and `fingerprint`; `UNCHANGED_SKIP_GEMINI` and `geminiSkipped` are normal cost-saving results.
+- Public exposure: only after `announcement_eligibility.reviewStatus` becomes `APPROVED` or `CORRECTED`.
+- Units: `AdminReviewDetailPage.units[]` is based on `announcement_unit`; never expose `rawText` or `sourceUnitKey` publicly.
+
 ## `/admin/import` 이식 메모
 
 ### 화면 IA

@@ -139,8 +139,8 @@ const AdminImportPage = ({ onReviewClick, onDashboardClick }) => {
           <div className="admin-head">
             <div>
               <div className="admin-eyebrow">ADMIN · LH IMPORT</div>
-              <h1 className="admin-title">LH 공고를 먼저 후보로 수집하고,<br />관리자가 선택한 공고만 AI 파싱합니다.</h1>
-              <p className="admin-desc">후보 수집과 목록 조회 단계에서는 Gemini 비용이 발생하지 않습니다. 선택 import 또는 강제 재파싱 시점에만 비용이 발생할 수 있도록 화면을 명확히 분리했습니다.</p>
+              <h1 className="admin-title">Save LH candidates first,<br />then import only selected rows.</h1>
+              <p className="admin-desc">Candidate collect/list only saves or reads lh_import_candidate. During selected import, dedupeStatus and fingerprint decide whether Gemini is called.</p>
             </div>
             <div className="admin-actions">
               <Button tone="dark" onClick={onReviewClick}>검수 대기 목록 →</Button>
@@ -156,7 +156,7 @@ const AdminImportPage = ({ onReviewClick, onDashboardClick }) => {
                 <div>
                   <div className="admin-eyebrow">STEP 1</div>
                   <h2 style={{ margin:0, fontSize:20 }}>후보 수집</h2>
-                  <p className="admin-desc">LH 목록/상세 JSON과 PDF URL을 후보 테이블에 저장합니다.</p>
+                  <p className="admin-desc">Save LH list/detail JSON and PDF URL into the lh_import_candidate table.</p>
                 </div>
                 <ToneBadge label="Gemini 호출 없음" tone="info" />
               </div>
@@ -245,7 +245,7 @@ const AdminImportPage = ({ onReviewClick, onDashboardClick }) => {
                   <div>
                     <div className="admin-eyebrow">STEP 3</div>
                     <h2 style={{ margin:0, fontSize:20 }}>실행 결과</h2>
-                    <p className="admin-desc">import는 완료가 아니라 검수 대기 상태로 이어집니다.</p>
+                    <p className="admin-desc">Import means announcement save/update and review queue handoff, not public exposure.</p>
                   </div>
                   <Button tone="dark" onClick={onReviewClick}>검수 대기 목록 보기 →</Button>
                 </div>
@@ -272,7 +272,7 @@ const AdminImportPage = ({ onReviewClick, onDashboardClick }) => {
               <ol className="workflow">
                 <li><span className="step-dot">1</span><div><strong>후보 수집</strong><p className="side-text">LH 원문과 PDF URL만 저장합니다. Gemini 호출 없음.</p></div></li>
                 <li><span className="step-dot">2</span><div><strong>후보 검토</strong><p className="side-text">canParse, 중복, PDF 유무를 보고 선택합니다.</p></div></li>
-                <li><span className="step-dot">3</span><div><strong>선택 import</strong><p className="side-text">선택한 후보만 AI 파싱 후 검수 대기로 보냅니다.</p></div></li>
+                <li><span className="step-dot">3</span><div><strong>Selected import</strong><p className="side-text">Only candidateIds selected by the admin are saved/updated as announcements; Gemini is called or skipped by dedupeStatus/fingerprint.</p></div></li>
               </ol>
             </div></section>
             <section className="admin-card"><div className="admin-pad">
@@ -292,7 +292,7 @@ const AdminImportPage = ({ onReviewClick, onDashboardClick }) => {
 
       {selected.length > 0 && (
         <div className="sticky-bar">
-          <div><div className="sticky-title">{selected.length}개 후보 선택됨</div><div className="sticky-desc">선택 import 실행 시 Gemini 비용이 발생할 수 있습니다.</div></div>
+          <div><div className="sticky-title">{selected.length} candidates selected</div><div className="sticky-desc">Selected import decides Gemini calls by dedupeStatus/fingerprint.</div></div>
           <label className="force"><input type="checkbox" checked={force} onChange={(e) => setForce(e.target.checked)} /> 강제 재파싱</label>
           <div className="sticky-actions"><Button tone="ghost" onClick={() => setSelected([])}>선택 해제</Button><Button tone="primary" onClick={runImport}>선택 후보 import</Button></div>
         </div>
