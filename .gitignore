@@ -39,3 +39,4 @@ subscrition/.claude/settings.local.json
 # AI agent/session state
 .sisyphus/
 AGENTS.md
+.omo/
