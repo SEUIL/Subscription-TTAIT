@@ -31,13 +31,13 @@ avatar (→ My Page), back buttons, and card clicks.
 - Three-layer card shadow for all elevated surfaces
 - Components are cosmetic-only — no real API calls
 
-## 관리자 LH 후보 import 핸드오프
+## 관리자 DTO 필드 재설계 핸드오프
 
-프론트 연동 전 관리자 화면 디자인 목업이 추가되었습니다.
+`docs/frontend/ADMIN_DTO_FIELD_DESIGN_HANDOFF.md` 기준으로 관리자 DTO 필드 노출 정책과 화면 배치를 다시 설계했습니다.
 
 | 파일 | 설명 |
 |---|---|
-| `admin_handoff.html` | LH 후보 import 콘솔 + 검수 상세 units 섹션 확인용 진입점 |
+| `admin_handoff.html` | 대시보드, 검수 목록, 상세 검수, 공급 단위까지 P0/P1/P2 필드 배치를 확인하는 정적 프로토타입 |
 | `AdminImportPage.jsx` | `/admin/import` 후보 수집/목록/선택 import/결과/force 모달 목업 |
 | `AdminReviewUnitsSection.jsx` | `AdminReviewDetailPage`의 `units[]` 검수 섹션 목업 |
 | `ADMIN_LH_IMPORT_HANDOFF.md` | 다음 프론트 작업자용 이식 메모 |

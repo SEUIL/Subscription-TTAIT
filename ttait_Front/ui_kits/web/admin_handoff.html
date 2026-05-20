@@ -1,81 +1,112 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>집구해 관리자 LH Import 디자인 핸드오프</title>
-<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" crossorigin="anonymous"></script>
-<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" crossorigin="anonymous"></script>
-<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" crossorigin="anonymous"></script>
-<style>
-@font-face {
-  font-family: 'Noto Sans KR';
-  src: url('../../fonts/NotoSansKR-VariableFont_wght.ttf') format('truetype');
-  font-weight: 100 900;
-  font-style: normal;
-  font-display: swap;
-}
-* { box-sizing: border-box; }
-body { margin: 0; font-family: 'Noto Sans KR', -apple-system, system-ui, sans-serif; background: #f2f2f2; color:#222; }
-.file-warning { display:none; margin:20px auto 0; padding:16px; max-width:900px; border-radius:16px; background:#fff0f3; line-height:1.6; }
-.handoff-nav { position:sticky; top:0; z-index:200; background:#fff; border-bottom:1px solid rgba(0,0,0,.08); }
-.handoff-nav-inner { max-width:1280px; margin:0 auto; padding:12px 24px; display:flex; gap:12px; align-items:center; }
-.handoff-logo { width:32px; height:32px; border-radius:8px; background:#ff385c; color:#fff; display:flex; align-items:center; justify-content:center; font-weight:900; }
-.handoff-title { font-weight:900; font-size:14px; }
-.handoff-sub { color:#6a6a6a; font-size:12px; }
-.handoff-tabs { margin-left:auto; display:flex; gap:6px; flex-wrap:wrap; }
-.handoff-tab { border:none; border-radius:10px; padding:9px 13px; font-family:inherit; font-weight:900; cursor:pointer; color:#6a6a6a; background:#f2f2f2; }
-.handoff-tab.active { background:#222; color:#fff; }
-@media (max-width: 720px) {
-  .handoff-nav-inner { padding:12px 16px; align-items:flex-start; flex-wrap:wrap; }
-  .handoff-tabs { width:100%; margin-left:0; }
-}
-</style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>집구해 관리자 DTO 필드 디자인 핸드오프</title>
+  <style>
+    @font-face{font-family:"Noto Sans KR";src:url("../../fonts/NotoSansKR-VariableFont_wght.ttf") format("truetype");font-weight:100 900;font-style:normal;font-display:swap}
+    :root{--rausch:#ff385c;--rausch-dark:#e00b41;--ink:#222;--muted:#6a6a6a;--line:rgba(0,0,0,.08);--line-strong:rgba(0,0,0,.14);--surface:#f2f2f2;--white:#fff;--blue-bg:#eff6ff;--blue:#1d4ed8;--green-bg:#f0fdf4;--green:#166534;--orange-bg:#fff7ed;--orange:#c2410c;--red-bg:#fff0f3;--shadow:rgba(0,0,0,.02) 0 0 0 1px,rgba(0,0,0,.04) 0 2px 6px,rgba(0,0,0,.10) 0 4px 8px}
+    *{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;font-family:"Noto Sans KR",-apple-system,BlinkMacSystemFont,system-ui,sans-serif;color:var(--ink);background:var(--surface);letter-spacing:-.2px}button,input,select,textarea{font:inherit}a{color:inherit}
+    .admin-nav{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.94);backdrop-filter:blur(14px);border-bottom:1px solid var(--line)}.nav-inner{max-width:1280px;margin:0 auto;padding:12px 24px;display:flex;align-items:center;gap:14px}.logo{width:36px;height:36px;border-radius:10px;display:grid;place-items:center;background:var(--rausch);color:#fff;font-weight:900}.brand-title{font-size:15px;font-weight:900;line-height:1.25}.brand-sub{margin-top:2px;color:var(--muted);font-size:12px;font-weight:600}.tabs{margin-left:auto;display:flex;gap:6px;overflow-x:auto;scrollbar-width:none}.tabs::-webkit-scrollbar{display:none}.tab{border:0;border-radius:999px;padding:10px 14px;color:var(--muted);background:#f7f7f7;font-size:13px;font-weight:900;white-space:nowrap;cursor:pointer;transition:.15s ease}.tab:hover{background:#eee;color:var(--ink)}.tab.active{background:var(--ink);color:#fff}
+    .shell{max-width:1280px;margin:0 auto;padding:32px 24px 96px}.hero{overflow:hidden;margin-bottom:24px;border-radius:28px;color:#fff;background:radial-gradient(circle at 90% 20%,rgba(255,255,255,.24),transparent 28%),linear-gradient(135deg,#222 0%,#3d2530 46%,#ff385c 120%);box-shadow:var(--shadow)}.hero-inner{padding:34px;display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:28px;align-items:end}.eyebrow{margin-bottom:8px;color:var(--rausch);font-size:12px;font-weight:900;letter-spacing:.4px}.hero .eyebrow{color:rgba(255,255,255,.72)}h1,h2,h3,p{margin-top:0}h1{margin-bottom:12px;font-size:clamp(28px,4vw,44px);line-height:1.16;letter-spacing:-1px}.hero-copy{margin-bottom:0;color:rgba(255,255,255,.78);font-size:15px;line-height:1.7;max-width:740px}.hero-card{border-radius:22px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.18);padding:18px}.hero-card strong{display:block;margin-bottom:8px;font-size:14px}.hero-card ul{margin:0;padding-left:18px;color:rgba(255,255,255,.78);font-size:13px;line-height:1.8}
+    .section{display:none}.section.active{display:block}.grid{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:20px}.card{background:#fff;border-radius:22px;box-shadow:var(--shadow);overflow:hidden}.span-12{grid-column:span 12}.span-8{grid-column:span 8}.span-4{grid-column:span 4}.card-head{padding:22px 24px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;gap:16px;align-items:flex-start}.card-title{margin-bottom:6px;font-size:20px;line-height:1.3;letter-spacing:-.4px}.card-desc{margin-bottom:0;color:var(--muted);font-size:13px;line-height:1.65}.pad{padding:24px}
+    .decision-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.decision{border:1px solid var(--line);border-radius:18px;padding:16px;background:#fff}.decision-top{display:flex;align-items:center;gap:8px;margin-bottom:8px;font-weight:900}.decision p{margin:0;color:var(--muted);font-size:13px;line-height:1.65}
+    .stat-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}.stat{min-height:134px;border:1px solid var(--line);border-radius:20px;padding:18px;background:#fff}.stat.primary{color:#fff;background:linear-gradient(135deg,var(--rausch),var(--rausch-dark));border-color:transparent}.stat-label{color:var(--muted);font-size:12px;font-weight:900}.stat.primary .stat-label,.stat.primary .stat-sub{color:rgba(255,255,255,.76)}.stat-value{margin-top:10px;font-size:34px;line-height:1;font-weight:900;letter-spacing:-1px}.stat-sub{margin-top:10px;color:var(--muted);font-size:12px;line-height:1.5}
+    .badge{display:inline-flex;align-items:center;min-height:24px;border-radius:999px;padding:4px 10px;border:1px solid transparent;font-size:11px;font-weight:900;white-space:nowrap;line-height:1.2}.badge.brand{color:var(--rausch);background:var(--red-bg);border-color:rgba(255,56,92,.20)}.badge.dark{color:#fff;background:var(--ink)}.badge.blue{color:var(--blue);background:var(--blue-bg);border-color:rgba(29,78,216,.16)}.badge.green{color:var(--green);background:var(--green-bg);border-color:rgba(22,101,52,.16)}.badge.orange{color:var(--orange);background:var(--orange-bg);border-color:rgba(194,65,12,.18)}.badge.gray{color:var(--muted);background:var(--surface);border-color:rgba(0,0,0,.06)}.badge.red{color:var(--rausch-dark);background:var(--red-bg);border-color:rgba(224,11,65,.18)}
+    .notice-table-wrap{overflow-x:auto}table{width:100%;border-collapse:collapse}.notice-table{min-width:1180px}.unit-table{min-width:1220px}th{padding:13px 16px;text-align:left;color:var(--muted);background:#fafafa;border-bottom:1px solid var(--line);font-size:12px;font-weight:900;white-space:nowrap}td{padding:16px;border-bottom:1px solid var(--line);vertical-align:top;font-size:13px}tr:last-child td{border-bottom:0}.title-cell{max-width:360px}.notice-name{font-size:15px;font-weight:900;line-height:1.45}.complex{margin-top:5px;color:var(--rausch);font-size:12px;font-weight:900}.meta{margin-top:4px;color:var(--muted);font-size:12px;line-height:1.5}.date-range strong{display:block;margin-bottom:4px;font-size:13px}.money{font-weight:900;white-space:nowrap;line-height:1.65}.debug-line{margin-top:8px;color:var(--muted);font-size:11px;font-weight:800}
+    details{border-radius:16px;background:#fafafa;border:1px solid var(--line)}summary{cursor:pointer;list-style:none;padding:14px 16px;font-size:13px;font-weight:900}summary::-webkit-details-marker{display:none}summary::after{content:"열기";float:right;color:var(--muted);font-size:12px}details[open] summary::after{content:"접기"}.details-body{padding:0 16px 16px;color:var(--muted);font-size:13px;line-height:1.7}
+    .info-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}.kv{border-radius:16px;background:#fafafa;border:1px solid var(--line);padding:14px;min-height:80px}.kv-k{color:var(--muted);font-size:11px;font-weight:900;margin-bottom:6px}.kv-v{font-size:14px;font-weight:900;line-height:1.45}.kv-note{margin-top:5px;color:var(--muted);font-size:12px;line-height:1.45}.timeline{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}.time-card{position:relative;border-radius:18px;border:1px solid var(--line);background:#fff;padding:16px}.time-card.important{background:var(--red-bg);border-color:rgba(255,56,92,.20)}.time-label{color:var(--muted);font-size:11px;font-weight:900}.time-value{margin-top:6px;font-size:15px;font-weight:900;line-height:1.4}.time-note{margin-top:6px;color:var(--muted);font-size:12px;line-height:1.45}.raw-box{border-radius:16px;padding:16px;color:var(--muted);background:#fafafa;border:1px solid var(--line);font-size:13px;line-height:1.75;white-space:pre-line}.raw-box.important{color:var(--ink);background:var(--orange-bg);border-color:rgba(194,65,12,.18)}
+    .tri-state{display:flex;gap:8px;flex-wrap:wrap}.history{display:grid;gap:12px}.history-item{display:grid;grid-template-columns:132px minmax(0,1fr);gap:14px;border:1px solid var(--line);border-radius:16px;padding:14px;background:#fff}.history-time{color:var(--muted);font-size:12px;font-weight:800;line-height:1.5}.history-body strong{display:block;margin-bottom:4px;font-size:14px}.history-body p{margin:0;color:var(--muted);font-size:13px;line-height:1.6}.side-note{border-radius:18px;padding:18px;color:var(--blue);background:var(--blue-bg);font-size:13px;line-height:1.65;font-weight:700}
+    .toolbar{display:flex;justify-content:space-between;align-items:end;gap:16px;padding:18px 24px;border-bottom:1px solid var(--line);flex-wrap:wrap}.filters{display:flex;gap:10px;flex-wrap:wrap}.filter{height:38px;border:1px solid var(--line-strong);border-radius:10px;padding:0 12px;background:#fff;color:var(--ink);font-size:13px;font-weight:800}.button{display:inline-flex;align-items:center;justify-content:center;height:40px;border:0;border-radius:10px;padding:0 15px;background:var(--ink);color:#fff;font-size:13px;font-weight:900;cursor:pointer;transition:.15s ease;text-decoration:none}.button:hover{transform:translateY(-1px);box-shadow:rgba(0,0,0,.08) 0 4px 12px}.button.secondary{color:var(--ink);background:var(--surface)}.button.brand{background:var(--rausch)}.mobile-list{display:none}.mobile-card{border:1px solid var(--line);border-radius:18px;padding:16px;background:#fff}.pill-row{display:flex;gap:6px;flex-wrap:wrap}.mt-8{margin-top:8px}.mt-12{margin-top:12px}.mt-16{margin-top:16px}.mt-20{margin-top:20px}
+    @media(max-width:1040px){.hero-inner{grid-template-columns:1fr}.span-8,.span-4{grid-column:span 12}.stat-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.decision-list{grid-template-columns:1fr}.timeline{grid-template-columns:repeat(2,minmax(0,1fr))}.info-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:760px){.nav-inner{padding:12px 16px;align-items:flex-start;flex-wrap:wrap}.tabs{width:100%;margin-left:0}.shell{padding:20px 16px 72px}.hero-inner{padding:24px}.stat-grid,.timeline,.info-grid{grid-template-columns:1fr}.card-head{flex-direction:column;padding:20px}.pad{padding:20px}.notice-table-wrap{display:none}.mobile-list{display:grid;gap:12px;padding:16px}.history-item{grid-template-columns:1fr}}
+  </style>
 </head>
 <body>
-<div id="file-warning" class="file-warning">
-  <strong>로컬 서버로 실행해주세요.</strong><br />
-  JSX 파일을 불러오는 목업입니다. 프로젝트 루트에서 <code>python -m http.server 8000</code> 실행 후
-  <code>http://localhost:8000/ui_kits/web/admin_handoff.html</code>로 확인하세요.
-</div>
-<div id="root"></div>
-<script>
-  if (location.protocol === 'file:') document.getElementById('file-warning').style.display = 'block';
-</script>
-<script type="text/babel" src="AdminImportPage.jsx"></script>
-<script type="text/babel" src="AdminReviewUnitsSection.jsx"></script>
-<script type="text/babel">
-const HandoffApp = () => {
-  const [tab, setTab] = React.useState('import');
-  const tabs = [
-    ['import', 'LH import 콘솔'],
-    ['units', '검수 상세 units'],
-  ];
-  return (
-    <>
-      <nav className="handoff-nav">
-        <div className="handoff-nav-inner">
-          <div className="handoff-logo">집</div>
-          <div>
-            <div className="handoff-title">관리자 LH 후보 import 디자인 핸드오프</div>
-            <div className="handoff-sub">Backend contract mock: lh_import_candidate -> selected announcement import -> announcement_unit review</div>
-          </div>
-          <div className="handoff-tabs">
-            {tabs.map(([id, label]) => (
-              <button key={id} className={`handoff-tab ${tab === id ? 'active' : ''}`} onClick={() => setTab(id)}>{label}</button>
-            ))}
-          </div>
+  <nav class="admin-nav">
+    <div class="nav-inner">
+      <div class="logo">집</div>
+      <div>
+        <div class="brand-title">집구해 관리자 디자인 핸드오프</div>
+        <div class="brand-sub">ADMIN_DTO_FIELD_DESIGN_HANDOFF.md 기반 재설계안</div>
+      </div>
+      <div class="tabs" role="tablist" aria-label="관리자 화면">
+        <button class="tab active" data-target="decision">디자인 결정안</button>
+        <button class="tab" data-target="dashboard">대시보드</button>
+        <button class="tab" data-target="list">검수 목록</button>
+        <button class="tab" data-target="detail">상세 검수</button>
+        <button class="tab" data-target="units">공급 단위</button>
+      </div>
+    </div>
+  </nav>
+  <main class="shell">
+    <section class="hero">
+      <div class="hero-inner">
+        <div>
+          <div class="eyebrow">ADMIN DTO FIELD REDESIGN</div>
+          <h1>운영 판단 필드는 바로 보이고,<br />원문·디버그 값은 접어서 확인합니다.</h1>
+          <p class="hero-copy">핸드오프 문서에서 보류했던 P0/P1/P2 필드를 화면 밀도와 혼동 가능성 기준으로 재배치했습니다. 검수자는 목록에서 우선순위를 빠르게 판단하고, 상세에서는 원문 근거를 필요할 때 펼쳐 볼 수 있습니다.</p>
         </div>
-      </nav>
-      {tab === 'import' ? (
-        <AdminImportPage onReviewClick={() => setTab('units')} onDashboardClick={() => alert('대시보드 이동 자리표시자입니다.')} />
-      ) : (
-        <AdminReviewUnitsPage />
-      )}
-    </>
-  );
-};
-ReactDOM.createRoot(document.getElementById('root')).render(<HandoffApp />);
-</script>
+        <div class="hero-card"><strong>이번 재설계 원칙</strong><ul><li>P0는 운영 판단용으로 기본 노출</li><li>P1는 요약 영역에 보조 정보로 노출</li><li>P2는 단위 검수/디버깅 접힘 영역으로 분리</li><li>null/false는 “미확인/아니오”로 명확히 구분</li></ul></div>
+      </div>
+    </section>
+    <section id="decision" class="section active">
+      <div class="grid"><article class="card span-12"><div class="card-head"><div><div class="eyebrow">DESIGN DECISIONS</div><h2 class="card-title">핸드오프 질문에 대한 프론트 설계 결정</h2><p class="card-desc">임의 배치가 아니라 운영자가 바로 써야 하는 정보와 검수 근거 정보를 계층화하는 방향입니다.</p></div><span class="badge brand">재설계 반영</span></div><div class="pad"><div class="decision-list">
+        <div class="decision"><div class="decision-top"><span class="badge brand">P0</span> processedToday</div><p>대시보드 핵심 지표 카드로 승격합니다. 전체 처리량보다 “오늘 처리”를 먼저 보이게 해 당일 운영 속도를 판단합니다.</p></div>
+        <div class="decision"><div class="decision-top"><span class="badge blue">P0</span> noticeStatus + reviewStatus</div><p>목록에서 공고 상태는 “공고 상태”, 검수 상태는 “검수 상태”로 분리된 칩 컬럼에 배치해 의미 혼동을 줄입니다.</p></div>
+        <div class="decision"><div class="decision-top"><span class="badge blue">P0</span> applicationStartDate</div><p>마감일 단독 표시를 기간 표시로 변경합니다. D-day는 마감 기준 강조 배지로 유지합니다.</p></div>
+        <div class="decision"><div class="decision-top"><span class="badge orange">P0</span> scheduleDetailsJson</div><p>JSON 원문을 기본 노출하지 않고 “구조화 일정 카드 + JSON 원문 접힘” 조합으로 제공합니다.</p></div>
+        <div class="decision"><div class="decision-top"><span class="badge orange">P0</span> importantNotesRaw</div><p>중요 안내는 상세 검수의 별도 강조 카드로 노출하되 긴 원문은 접힘 영역으로 둡니다.</p></div>
+        <div class="decision"><div class="decision-top"><span class="badge gray">P2</span> unitId / exclusiveAreaValue / salePriceRaw</div><p>목록형 단위 테이블에는 보조 텍스트로 최소 노출하고, 내부 식별자와 원문 가격은 “운영 디버그” 접힘 영역에 둡니다.</p></div>
+      </div></div></article></div>
+    </section>
+    <section id="dashboard" class="section">
+      <div class="grid"><article class="card span-12"><div class="card-head"><div><div class="eyebrow">ADMIN DASHBOARD</div><h2 class="card-title">오늘 처리량을 첫 번째 KPI로 배치</h2><p class="card-desc">AdminStatsResponse.processedToday를 기존 상태 카드와 같은 레벨로 올리고, 당일 운영 판단이 가능하게 합니다.</p></div><button class="button brand">검수 대기 목록 보기</button></div><div class="pad"><div class="stat-grid">
+        <div class="stat primary"><div class="stat-label">오늘 처리</div><div class="stat-value">18</div><div class="stat-sub">processedToday · 어제보다 4건 증가</div></div>
+        <div class="stat"><div class="stat-label">검수 대기</div><div class="stat-value">42</div><div class="stat-sub">pending · 마감 임박 7건 포함</div></div>
+        <div class="stat"><div class="stat-label">승인</div><div class="stat-value">128</div><div class="stat-sub">approved · 공개 가능 상태</div></div>
+        <div class="stat"><div class="stat-label">보정 완료</div><div class="stat-value">31</div><div class="stat-sub">corrected · 재검수 필요 5건</div></div>
+        <div class="stat"><div class="stat-label">반려</div><div class="stat-value">9</div><div class="stat-sub">rejected · 원문 불일치 중심</div></div>
+        <div class="stat"><div class="stat-label">재수집</div><div class="stat-value">6</div><div class="stat-sub">reImport · LH 원문 변경 감지</div></div>
+        <div class="stat"><div class="stat-label">전체 공고</div><div class="stat-value">216</div><div class="stat-sub">totalAnnouncements</div></div>
+        <div class="stat"><div class="stat-label">운영 알림</div><div class="stat-value">3</div><div class="stat-sub">LOW 신뢰도 단위 검수 필요</div></div>
+      </div></div></article></div>
+    </section>
+    <section id="list" class="section">
+      <div class="grid"><article class="card span-12"><div class="card-head"><div><div class="eyebrow">ADMIN REVIEW LIST</div><h2 class="card-title">공고 상태와 검수 상태를 분리한 목록</h2><p class="card-desc">noticeStatus, applicationStartDate, fullAddress, complexName을 목록 밀도를 해치지 않는 보조 정보로 추가합니다.</p></div><span class="badge blue">P0/P1 반영</span></div>
+      <div class="toolbar"><div class="filters"><select class="filter"><option>검수 상태 전체</option><option>대기</option><option>보정 요청</option></select><select class="filter"><option>공고 상태 전체</option><option>공고중</option><option>마감 임박</option><option>마감</option></select><select class="filter"><option>지역 전체</option><option>서울</option><option>경기</option></select></div><button class="button secondary">선택한 공고 일괄 배정</button></div>
+      <div class="notice-table-wrap"><table class="notice-table"><thead><tr><th>공고 / 단지</th><th>공고 상태</th><th>검수 상태</th><th>접수 기간</th><th>지역 / 주소</th><th>공급 유형</th><th>가격</th><th>세대</th><th>검수자</th></tr></thead><tbody>
+        <tr><td class="title-cell"><div class="notice-name">서울 강동천호 행복주택 예비입주자 모집공고</div><div class="complex">강동천호 행복주택</div><div class="meta">announcementId #1042 · LH</div></td><td><span class="badge green">공고중</span></td><td><span class="badge orange">검수 대기</span></td><td class="date-range"><strong>2026.05.21 ~ 2026.05.27</strong><span class="badge brand">D-7</span></td><td><strong>서울 · 강동구</strong><div class="meta">서울특별시 강동구 천호동 458-3 일원</div></td><td>행복주택<br><span class="meta">청년 / 신혼부부</span></td><td>보증금 4,200만원<br><span class="meta">월세 17.8만원</span></td><td>72세대<br><span class="meta">3개 unit</span></td><td><span class="meta">미배정</span></td></tr>
+        <tr><td class="title-cell"><div class="notice-name">고양창릉 A-4 공공분양 정정공고</div><div class="complex">고양창릉 A-4BL</div><div class="meta">announcementId #1039 · LH</div></td><td><span class="badge red">마감 임박</span></td><td><span class="badge blue">보정 요청</span></td><td class="date-range"><strong>2026.05.02 ~ 2026.05.21</strong><span class="badge red">D-1</span></td><td><strong>경기 · 고양시</strong><div class="meta">경기도 고양시 덕양구 창릉동 일원</div></td><td>공공분양<br><span class="meta">생애최초 / 일반</span></td><td>분양가 3.8억~4.2억<br><span class="meta">원문 가격 있음</span></td><td>420세대<br><span class="meta">5개 unit</span></td><td>김관리<br><span class="meta">2026.05.20 10:31</span></td></tr>
+        <tr><td class="title-cell"><div class="notice-name">인천검단 AA35 국민임대 추가모집</div><div class="complex">검단 AA35블록</div><div class="meta">announcementId #1034 · LH</div></td><td><span class="badge gray">마감</span></td><td><span class="badge green">승인</span></td><td class="date-range"><strong>2026.04.28 ~ 2026.05.15</strong><span class="badge gray">마감</span></td><td><strong>인천 · 서구</strong><div class="meta">인천광역시 서구 원당동 1012</div></td><td>국민임대<br><span class="meta">저소득</span></td><td>보증금 2,900만원<br><span class="meta">월세 21만원</span></td><td>118세대<br><span class="meta">4개 unit</span></td><td>이검수<br><span class="meta">2026.05.19 16:08</span></td></tr>
+      </tbody></table></div>
+      <div class="mobile-list"><article class="mobile-card"><div class="pill-row"><span class="badge green">공고중</span><span class="badge orange">검수 대기</span><span class="badge brand">D-7</span></div><div class="notice-name mt-12">서울 강동천호 행복주택 예비입주자 모집공고</div><div class="complex">강동천호 행복주택</div><div class="meta">2026.05.21 ~ 2026.05.27 · 서울 강동구 · 서울특별시 강동구 천호동 458-3 일원</div></article><article class="mobile-card"><div class="pill-row"><span class="badge red">마감 임박</span><span class="badge blue">보정 요청</span><span class="badge red">D-1</span></div><div class="notice-name mt-12">고양창릉 A-4 공공분양 정정공고</div><div class="complex">고양창릉 A-4BL</div><div class="meta">2026.05.02 ~ 2026.05.21 · 경기 고양시 · 원문 가격 확인 필요</div></article></div>
+      </article></div>
+    </section>
+    <section id="detail" class="section">
+      <div class="grid"><article class="card span-8"><div class="card-head"><div><div class="eyebrow">ADMIN REVIEW DETAIL</div><h2 class="card-title">상세 검수 정보 구조 재배치</h2><p class="card-desc">noticeType, supplyHouseholdCountBasis, 일정 JSON, 중요 안내 원문, 검수 이력 조건부 표시를 반영한 상세 화면입니다.</p></div><div class="pill-row"><span class="badge green">공고중</span><span class="badge orange">검수 대기</span></div></div><div class="pad">
+        <div class="info-grid"><div class="kv"><div class="kv-k">공고 유형</div><div class="kv-v">예비입주자 모집</div><div class="kv-note">noticeType · 상태 칩과 분리</div></div><div class="kv"><div class="kv-k">공급 / 주택 유형</div><div class="kv-v">행복주택 · 청년/신혼부부</div><div class="kv-note">supplyType + houseType</div></div><div class="kv"><div class="kv-k">세대 수 산정 기준</div><div class="kv-v">PDF 표 3-1 기준 합산</div><div class="kv-note">supplyHouseholdCountBasis</div></div></div>
+        <h3 class="card-title mt-20">구조화 일정</h3><div class="timeline"><div class="time-card"><div class="time-label">공고일</div><div class="time-value">2026.05.20</div><div class="time-note">LH API 기준</div></div><div class="time-card important"><div class="time-label">접수</div><div class="time-value">05.21 10:00 ~ 05.27 17:00</div><div class="time-note">applicationStartDate + EndDate</div></div><div class="time-card"><div class="time-label">서류 제출</div><div class="time-value">06.02 ~ 06.05</div><div class="time-note">scheduleDetailsJson 파싱</div></div><div class="time-card"><div class="time-label">당첨 발표</div><div class="time-value">2026.07.10</div><div class="time-note">scheduleDetailsJson 파싱</div></div></div>
+        <details class="mt-16"><summary>scheduleDetailsJson 원문 보기</summary><div class="details-body">{"documentSubmit":"2026-06-02~2026-06-05","winnerAnnouncement":"2026-07-10","contract":"2026-07-22~2026-07-24"}</div></details>
+        <h3 class="card-title mt-20">중요 안내 원문</h3><div class="raw-box important">신청 자격은 모집공고일 현재 무주택세대구성원 기준으로 판단합니다.
+동일 순위 내 경쟁 시 배점 기준과 추첨 순서를 반드시 확인해야 합니다.</div>
+        <details class="mt-12"><summary>importantNotesRaw 전체 원문 펼치기</summary><div class="details-body">공고문 본문에 포함된 중복 신청 제한, 소득·자산 기준, 서류 제출 누락 시 탈락 처리 안내를 원문 그대로 확인합니다. 긴 텍스트는 검수 흐름을 방해하지 않도록 접힘 영역으로 유지합니다.</div></details>
+        <h3 class="card-title mt-20">원문 가격 근거</h3><details><summary>salePriceRaw / 원문 가격 영역</summary><div class="details-body">“분양가격은 타입별 382,100천원부터 421,700천원까지이며, 발코니 확장비와 선택품목은 별도입니다.” 정규화된 salePriceMin/Max와 값이 다를 경우 이 영역에서 불일치 표시를 제공합니다.</div></details>
+      </div></article>
+      <aside class="card span-4"><div class="card-head"><div><div class="eyebrow">REVIEW UX</div><h2 class="card-title">조건부 필드 표시</h2><p class="card-desc">검수자 없음, null boolean을 사용자가 오해하지 않게 표현합니다.</p></div></div><div class="pad"><h3 class="card-title">자격 조건</h3><div class="tri-state"><span class="badge green">무주택 필수: 예</span><span class="badge gray">저소득 필수: 미확인</span><span class="badge red">고령자 필수: 아니오</span></div><p class="card-desc mt-12">null은 “미확인” 회색 칩, false는 “아니오” 빨강 칩으로 분리합니다.</p><h3 class="card-title mt-20">검수 이력</h3><div class="history"><div class="history-item"><div class="history-time">2026.05.20<br>13:22</div><div class="history-body"><strong>검수자 미기록</strong><p>reviewedBy가 없어도 reviewedAt/reviewNote가 있으면 이력을 숨기지 않고 “검수자 미기록”으로 표시합니다.</p></div></div><div class="history-item"><div class="history-time">2026.05.19<br>16:08</div><div class="history-body"><strong>이검수</strong><p>월세 원문과 정규화 값 불일치로 보정 요청.</p></div></div></div><div class="side-note mt-20">상세 화면에서는 원문을 “항상 펼침”으로 두지 않습니다. 검수 흐름에서 먼저 필요한 구조화 값만 보이고, 원문은 오류 확인과 근거 검증 때 펼칩니다.</div></div></aside></div>
+    </section>
+    <section id="units" class="section">
+      <div class="grid"><article class="card span-12"><div class="card-head"><div><div class="eyebrow">ANNOUNCEMENT UNITS</div><h2 class="card-title">단위 정보는 검수값과 디버그값을 분리</h2><p class="card-desc">unitId, regionLevel1/2, exclusiveAreaValue, salePriceRaw를 관리자 디버깅 보조값으로 다룹니다.</p></div><span class="badge gray">P2 반영</span></div>
+      <div class="notice-table-wrap"><table class="unit-table"><thead><tr><th>순서</th><th>출처 / 신뢰도</th><th>단지 / 주소</th><th>유형</th><th>면적</th><th>가격</th><th>세대</th><th>검수 근거</th></tr></thead><tbody>
+        <tr><td><strong>1</strong><div class="debug-line">unitId 8841</div></td><td><div class="pill-row"><span class="badge green">MERGED</span><span class="badge green">HIGH</span></div><div class="meta">LH_API_AND_PDF_AI</div></td><td><strong>강동천호 행복주택</strong><div class="meta">서울 · 강동구</div><div class="meta">서울특별시 강동구 천호동 458-3 일원</div></td><td>행복주택 <span class="meta">(행복주택)</span><br>청년 <span class="meta">(청년형 26A)</span></td><td><strong>26.43㎡</strong><div class="meta">exclusiveAreaValue 26.43</div></td><td><div class="money">보증금 4,200만원</div><div class="money">월세 17.8만원</div></td><td><strong>44세대</strong></td><td><details><summary>원문 / 디버그 보기</summary><div class="details-body">sourceUnitKey: P12-TABLE-03-ROW-02<br>salePriceRaw: 해당 없음<br>rawText: 26A 청년형 공급호수 44호, 임대보증금 42,000천원, 월임대료 178,000원</div></details></td></tr>
+        <tr><td><strong>2</strong><div class="debug-line">unitId 8842</div></td><td><div class="pill-row"><span class="badge orange">PDF_AI</span><span class="badge orange">LOW</span></div><div class="meta">PDF_TABLE_ROW</div></td><td><strong>고양창릉 A-4BL</strong><div class="meta">경기 · 고양시</div><div class="meta">경기도 고양시 덕양구 창릉동 일원</div></td><td>공공분양 <span class="meta">(공공분양)</span><br>생애최초 <span class="meta">(59A)</span></td><td><strong>59.91㎡</strong><div class="meta">exclusiveAreaValue 59.91</div></td><td><div class="money">분양가 3.82억~4.21억</div><div class="meta">원문 가격 확인 필요</div></td><td><strong>84세대</strong></td><td><details open><summary>원문 / 디버그 보기</summary><div class="details-body">sourceUnitKey: PDF-UNIT-59A-FIRST<br>salePriceRaw: “382,100천원 ~ 421,700천원, 발코니 확장비 별도”<br>rawText: PDF 표가 병합되어 타입별 가격과 선택품목 금액이 함께 추출됨. 정규화 가격과 원문을 대조해야 함.</div></details></td></tr>
+      </tbody></table></div>
+      <div class="mobile-list"><article class="mobile-card"><div class="pill-row"><span class="badge green">MERGED</span><span class="badge green">HIGH</span></div><div class="notice-name mt-12">#1 강동천호 행복주택</div><div class="meta">서울 · 강동구 · 26.43㎡ · 44세대</div><details class="mt-12"><summary>원문 / 디버그 보기</summary><div class="details-body">unitId 8841 · sourceUnitKey P12-TABLE-03-ROW-02</div></details></article><article class="mobile-card"><div class="pill-row"><span class="badge orange">PDF_AI</span><span class="badge orange">LOW</span></div><div class="notice-name mt-12">#2 고양창릉 A-4BL</div><div class="meta">경기 · 고양시 · 59.91㎡ · 분양가 원문 확인 필요</div><details class="mt-12" open><summary>원문 / 디버그 보기</summary><div class="details-body">unitId 8842 · salePriceRaw “382,100천원 ~ 421,700천원”</div></details></article></div>
+      </article></div>
+    </section>
+  </main>
+  <script>
+    const tabs=Array.from(document.querySelectorAll(".tab"));const sections=Array.from(document.querySelectorAll(".section"));tabs.forEach(tab=>{tab.addEventListener("click",()=>{const target=tab.dataset.target;tabs.forEach(item=>item.classList.toggle("active",item===tab));sections.forEach(section=>section.classList.toggle("active",section.id===target));window.scrollTo({top:0,behavior:"smooth"});});});
+  </script>
 </body>
 </html>
