@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Naver Map Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 40px 20px;
+            background: #f5f7fb;
+            color: #1f2937;
+        }
+
+        .wrap {
+            max-width: 1100px;
+            margin: 0 auto;
+            background: #fff;
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: 0 20px 40px rgba(15, 23, 42, 0.08);
+        }
+
+        h1 {
+            margin-top: 0;
+            font-size: 28px;
+        }
+
+        p {
+            line-height: 1.6;
+        }
+
+        form {
+            display: flex;
+            gap: 12px;
+            margin: 20px 0 16px;
+        }
+
+        input {
+            flex: 1;
+            height: 48px;
+            padding: 0 14px;
+            border: 1px solid #cbd5e1;
+            border-radius: 10px;
+            font-size: 15px;
+        }
+
+        button {
+            height: 48px;
+            padding: 0 18px;
+            border: none;
+            border-radius: 10px;
+            background: #16a34a;
+            color: #fff;
+            font-size: 15px;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        #map {
+            width: 100%;
+            height: 520px;
+            border-radius: 16px;
+            background: #e5e7eb;
+            overflow: hidden;
+        }
+
+        .result {
+            margin-top: 16px;
+            padding: 16px;
+            border-radius: 12px;
+            background: #0f172a;
+            color: #e2e8f0;
+            min-height: 72px;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+
+        .hint {
+            font-size: 14px;
+            color: #64748b;
+        }
+    </style>
+</head>
+<body>
+<div class="wrap" id="app" th:attr="data-client-id=${naverMapClientId}">
+    <h1>Naver Map Test</h1>
+    <p>기본 지도가 뜨는지 확인하고, 주소를 입력하면 백엔드 Geocoding 결과로 해당 위치에 마커를 찍습니다.</p>
+
+    <form id="map-form">
+        <input id="query" name="query" type="text" placeholder="예: 서울특별시 성동구 왕십리로 83-21" required>
+        <button type="submit">지도에서 보기</button>
+    </form>
+
+    <p class="hint">현재 페이지는 `Client ID`만 써서 지도를 띄우고, 주소 변환은 `/api/dev/naver-geocode`가 담당합니다.</p>
+    <div id="map"></div>
+    <div id="result" class="result">지도가 로드되면 여기에 좌표와 주소가 표시됩니다.</div>
+</div>
+
+<script>
+    const app = document.getElementById('app');
+    const NAVER_MAP_CLIENT_ID = app ? app.dataset.clientId : '';
+    let map;
+    let marker;
+    const result = document.getElementById('result');
+    const defaultCenter = { lat: 37.5665, lng: 126.9780 };
+
+    function updateResult(text) {
+        result.textContent = text;
+    }
+
+    function ensureMapLoaded() {
+        if (!NAVER_MAP_CLIENT_ID) {
+            return Promise.reject(new Error('Client ID가 비어 있습니다.'));
+        }
+
+        if (window.naver && window.naver.maps) {
+            return Promise.resolve();
+        }
+
+        return new Promise((resolve, reject) => {
+            const script = document.createElement('script');
+            script.src = `https://oapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=${NAVER_MAP_CLIENT_ID}`;
+            script.onload = resolve;
+            script.onerror = () => reject(new Error('네이버 지도 스크립트를 불러오지 못했습니다.'));
+            document.head.appendChild(script);
+        });
+    }
+
+    function initializeMap() {
+        map = new naver.maps.Map('map', {
+            center: new naver.maps.LatLng(defaultCenter.lat, defaultCenter.lng),
+            zoom: 14
+        });
+
+        marker = new naver.maps.Marker({
+            position: new naver.maps.LatLng(defaultCenter.lat, defaultCenter.lng),
+            map
+        });
+
+        updateResult('기본 지도 로드 완료\n기본 좌표: 37.5665, 126.9780');
+    }
+
+    async function showAddressOnMap(query) {
+        updateResult('주소를 좌표로 변환하는 중...');
+
+        const response = await fetch(`/api/dev/naver-geocode?query=${encodeURIComponent(query)}`);
+        const responseText = await response.text();
+        if (!response.ok) {
+            throw new Error(`Geocoding 요청 실패 (${response.status})\n${responseText.slice(0, 300)}`);
+        }
+        if (!response.ok) {
+            throw new Error(`Geocoding 요청 실패 (${response.status})`);
+        }
+
+        const data = JSON.parse(responseText);
+        const first = data.addresses && data.addresses[0];
+
+        if (!first) {
+            updateResult('검색 결과가 없습니다.');
+            return;
+        }
+
+        const lat = Number(first.y);
+        const lng = Number(first.x);
+        const position = new naver.maps.LatLng(lat, lng);
+
+        map.setCenter(position);
+        marker.setPosition(position);
+
+        updateResult([
+            `검색 주소: ${query}`,
+            `도로명 주소: ${first.roadAddress || '-'}`,
+            `지번 주소: ${first.jibunAddress || '-'}`,
+            `경도(x): ${first.x}`,
+            `위도(y): ${first.y}`
+        ].join('\n'));
+    }
+
+    document.getElementById('map-form').addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const query = document.getElementById('query').value.trim();
+        if (!query) {
+            updateResult('주소를 입력해 주세요.');
+            return;
+        }
+
+        try {
+            await showAddressOnMap(query);
+        } catch (error) {
+            updateResult(`요청 실패: ${error.message}`);
+        }
+    });
+
+    ensureMapLoaded()
+        .then(initializeMap)
+        .catch((error) => updateResult(`지도 로드 실패: ${error.message}`));
+</script>
+</body>
+</html>

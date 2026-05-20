@@ -40,6 +40,8 @@ public class SecurityConfig {
                                 "/swagger-ui/**",
                                 "/v3/api-docs/**").permitAll()
                         // 공고 목록/상세 조회는 비로그인 사용자도 가능 (GET만 허용)
+                        .requestMatchers(HttpMethod.GET, "/dev/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/dev/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/announcements/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/filters/**").permitAll()
                         // CORS 프리플라이트 요청 허용
