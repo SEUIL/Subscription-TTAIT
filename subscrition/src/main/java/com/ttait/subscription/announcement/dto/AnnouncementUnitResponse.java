@@ -2,6 +2,7 @@ package com.ttait.subscription.announcement.dto;
 
 import com.ttait.subscription.announcement.domain.AnnouncementUnit;
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 
 public record AnnouncementUnitResponse(
         Long unitId,
@@ -21,7 +22,11 @@ public record AnnouncementUnitResponse(
         String salePriceRaw,
         Integer supplyHouseholdCount,
         String unitSource,
-        String confidenceLevel
+        String confidenceLevel,
+        BigDecimal latitude,
+        BigDecimal longitude,
+        String geocodeStatus,
+        LocalDateTime geocodedAt
 ) {
     public static AnnouncementUnitResponse from(AnnouncementUnit unit) {
         return new AnnouncementUnitResponse(
@@ -42,7 +47,11 @@ public record AnnouncementUnitResponse(
                 unit.getSalePriceRaw(),
                 unit.getSupplyHouseholdCount(),
                 unit.getUnitSource() != null ? unit.getUnitSource().name() : null,
-                unit.getConfidenceLevel() != null ? unit.getConfidenceLevel().name() : null
+                unit.getConfidenceLevel() != null ? unit.getConfidenceLevel().name() : null,
+                unit.getLatitude(),
+                unit.getLongitude(),
+                unit.getGeocodeStatus() != null ? unit.getGeocodeStatus().name() : null,
+                unit.getGeocodedAt()
         );
     }
 }

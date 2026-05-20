@@ -28,21 +28,24 @@ public class NoticeImportOrchestrator {
     private final NoticeImportPersistenceService persistenceService;
     private final PdfParsingService pdfParsingService;
     private final LhImportDedupeDecisionService dedupeDecisionService;
+    private final AnnouncementUnitGeocodingEnrichmentService geocodingEnrichmentService;
     private final ObjectMapper objectMapper;
     private final AnnouncementRepository announcementRepository;
     private final AnnouncementParseRawRepository announcementParseRawRepository;
 
     public NoticeImportOrchestrator(LhApiClient lhApiClient,
-                                     NoticeImportPersistenceService persistenceService,
-                                     PdfParsingService pdfParsingService,
-                                     LhImportDedupeDecisionService dedupeDecisionService,
-                                     ObjectMapper objectMapper,
-                                     AnnouncementRepository announcementRepository,
-                                     AnnouncementParseRawRepository announcementParseRawRepository) {
+                                      NoticeImportPersistenceService persistenceService,
+                                      PdfParsingService pdfParsingService,
+                                      LhImportDedupeDecisionService dedupeDecisionService,
+                                      AnnouncementUnitGeocodingEnrichmentService geocodingEnrichmentService,
+                                      ObjectMapper objectMapper,
+                                      AnnouncementRepository announcementRepository,
+                                      AnnouncementParseRawRepository announcementParseRawRepository) {
         this.lhApiClient = lhApiClient;
         this.persistenceService = persistenceService;
         this.pdfParsingService = pdfParsingService;
         this.dedupeDecisionService = dedupeDecisionService;
+        this.geocodingEnrichmentService = geocodingEnrichmentService;
         this.objectMapper = objectMapper;
         this.announcementRepository = announcementRepository;
         this.announcementParseRawRepository = announcementParseRawRepository;
@@ -274,6 +277,7 @@ public class NoticeImportOrchestrator {
         }
 
         persistenceService.upsertLhDetail(panId, detailResponse, pdfResult, pdfRawJson);
+        enrichUnitsAfterImport(announcement);
         if (decision.shouldParseGemini() && pdfResult == null) {
             dedupeDecisionService.recordFailure(announcement, decision, "Gemini parse returned no result");
         } else {
@@ -370,10 +374,19 @@ public class NoticeImportOrchestrator {
         }
 
         persistenceService.upsertLhDetail(panId, detailResponse, pdfResult, pdfRawJson);
+        enrichUnitsAfterImport(announcement);
         if (decision.shouldParseGemini() && pdfResult == null) {
             dedupeDecisionService.recordFailure(announcement, decision, "Gemini parse returned no result");
         } else {
             dedupeDecisionService.recordSuccess(announcement, decision, pdfRawJson);
+        }
+    }
+
+    private void enrichUnitsAfterImport(Announcement announcement) {
+        try {
+            geocodingEnrichmentService.enrichNotRequestedUnits(announcement.getId());
+        } catch (RuntimeException e) {
+            log.warn("Post-import geocoding enrichment failed announcementId={}", announcement.getId(), e);
         }
     }
 
