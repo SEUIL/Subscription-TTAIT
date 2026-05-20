@@ -1,4 +1,4 @@
-package com.ttait.subscription.announcement.dto;
+package com.ttait.subscription.admin.dto;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -12,58 +12,44 @@ import java.util.Arrays;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.util.ReflectionTestUtils;
 
-class AnnouncementUnitResponseTest {
+class AdminAnnouncementUnitResponseTest {
 
     @Test
-    void publicResponseMapsSafeUnitFieldsWithoutSourceKeyOrRawText() {
+    void adminResponseMapsGeocodeFieldsAndReviewOnlyMessage() {
         AnnouncementUnit unit = unit();
+        LocalDateTime geocodedAt = LocalDateTime.of(2026, 5, 20, 11, 10);
+        unit.markGeocodeFailed("API 오류", geocodedAt);
 
-        AnnouncementUnitResponse response = AnnouncementUnitResponse.from(unit);
+        AdminAnnouncementUnitResponse response = AdminAnnouncementUnitResponse.from(unit);
 
         assertThat(response.unitId()).isEqualTo(10L);
-        assertThat(response.unitOrder()).isEqualTo(1);
-        assertThat(response.complexName()).isEqualTo("테스트단지");
-        assertThat(response.supplyType()).isEqualTo("국민임대");
-        assertThat(response.houseType()).isEqualTo("아파트");
-        assertThat(response.exclusiveAreaValue()).isEqualByComparingTo(new BigDecimal("59.84"));
-        assertThat(response.depositAmount()).isEqualTo(5000L);
-        assertThat(response.monthlyRentAmount()).isEqualTo(25L);
-        assertThat(response.salePriceRaw()).isEqualTo("분양가 원문");
+        assertThat(response.rawText()).isEqualTo("원문 행 텍스트");
+        assertThat(response.sourceUnitKey()).isEqualTo("unit-key-1");
         assertThat(response.unitSource()).isEqualTo("MERGED");
+        assertThat(response.matchSource()).isEqualTo("AI");
         assertThat(response.confidenceLevel()).isEqualTo("HIGH");
         assertThat(response.latitude()).isNull();
         assertThat(response.longitude()).isNull();
-        assertThat(response.geocodeStatus()).isEqualTo("NOT_REQUESTED");
-        assertThat(response.geocodedAt()).isNull();
-    }
-
-    @Test
-    void publicResponseMapsGeocodeFieldsWithoutAdminMessageOrRawPayload() {
-        AnnouncementUnit unit = unit();
-        LocalDateTime geocodedAt = LocalDateTime.of(2026, 5, 20, 11, 0);
-        unit.markGeocodeSuccess(new BigDecimal("37.5665000"), new BigDecimal("126.9780000"), geocodedAt);
-
-        AnnouncementUnitResponse response = AnnouncementUnitResponse.from(unit);
-
-        assertThat(response.latitude()).isEqualByComparingTo(new BigDecimal("37.5665000"));
-        assertThat(response.longitude()).isEqualByComparingTo(new BigDecimal("126.9780000"));
-        assertThat(response.geocodeStatus()).isEqualTo("SUCCESS");
+        assertThat(response.geocodeStatus()).isEqualTo("FAILED");
         assertThat(response.geocodedAt()).isEqualTo(geocodedAt);
-        assertThat(recordComponentNames(AnnouncementUnitResponse.class))
-                .doesNotContain("geocodeMessage", "rawText", "sourceUnitKey", "rawNaverPayload", "naverPayload", "naverApiKey");
+        assertThat(response.geocodeMessage()).isEqualTo("API 오류");
+        assertThat(recordComponentNames(AdminAnnouncementUnitResponse.class))
+                .contains("geocodeMessage")
+                .doesNotContain("rawNaverPayload", "naverPayload", "naverApiKey", "clientSecret");
     }
 
     @Test
-    void publicResponseHandlesNullableGeocodeStatus() {
+    void adminResponseHandlesNullableGeocodeFields() {
         AnnouncementUnit unit = unit();
         ReflectionTestUtils.setField(unit, "geocodeStatus", null);
 
-        AnnouncementUnitResponse response = AnnouncementUnitResponse.from(unit);
+        AdminAnnouncementUnitResponse response = AdminAnnouncementUnitResponse.from(unit);
 
         assertThat(response.latitude()).isNull();
         assertThat(response.longitude()).isNull();
         assertThat(response.geocodeStatus()).isNull();
         assertThat(response.geocodedAt()).isNull();
+        assertThat(response.geocodeMessage()).isNull();
     }
 
     private String[] recordComponentNames(Class<?> recordType) {

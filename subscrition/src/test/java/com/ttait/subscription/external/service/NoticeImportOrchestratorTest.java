@@ -6,11 +6,13 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
+import static org.mockito.BDDMockito.willThrow;
 import static org.mockito.Mockito.never;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ttait.subscription.announcement.domain.Announcement;
+import com.ttait.subscription.announcement.domain.AnnouncementParseRaw;
 import com.ttait.subscription.announcement.domain.AnnouncementStatus;
 import com.ttait.subscription.announcement.domain.SourceType;
 import com.ttait.subscription.announcement.repository.AnnouncementParseRawRepository;
@@ -20,6 +22,7 @@ import com.ttait.subscription.external.lh.LhApiClient;
 import com.ttait.subscription.external.pdf.PdfParsingService;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -39,6 +42,8 @@ class NoticeImportOrchestratorTest {
     @Mock
     private LhImportDedupeDecisionService dedupeDecisionService;
     @Mock
+    private AnnouncementUnitGeocodingEnrichmentService geocodingEnrichmentService;
+    @Mock
     private AnnouncementRepository announcementRepository;
     @Mock
     private AnnouncementParseRawRepository announcementParseRawRepository;
@@ -53,6 +58,7 @@ class NoticeImportOrchestratorTest {
                 persistenceService,
                 pdfParsingService,
                 dedupeDecisionService,
+                geocodingEnrichmentService,
                 objectMapper,
                 announcementRepository,
                 announcementParseRawRepository
@@ -77,6 +83,7 @@ class NoticeImportOrchestratorTest {
         assertThat(result.failed()).isZero();
         then(pdfParsingService).should().parse(fixture.pdfUrl());
         then(persistenceService).should().upsertLhDetail(eq("PAN-001"), eq(fixture.detail()), eq(pdfResult), anyString());
+        then(geocodingEnrichmentService).should().enrichNotRequestedUnits(1L);
         then(dedupeDecisionService).should().recordSuccess(announcement, changedDecision, objectMapper.writeValueAsString(pdfResult));
     }
 
@@ -178,7 +185,64 @@ class NoticeImportOrchestratorTest {
         assertThat(result.failed()).isZero();
         then(pdfParsingService).should().parse(fixture.pdfUrl());
         then(persistenceService).should().upsertLhDetail(eq("PAN-001"), eq(fixture.detail()), eq(pdfResult), anyString());
+        then(geocodingEnrichmentService).should().enrichNotRequestedUnits(1L);
         then(dedupeDecisionService).should().recordSuccess(announcement, forceDecision, objectMapper.writeValueAsString(pdfResult));
+    }
+
+    @Test
+    void geocodingEnrichmentFailureDoesNotFailImportSuccess() throws Exception {
+        ImportFixture fixture = givenSingleNoticePage(false, true);
+        Announcement announcement = announcement();
+        PdfParseResult pdfResult = pdfResult();
+        LhImportDedupeDecision listDecision = decision(LhImportDecisionType.NEW, false, true, false);
+        LhImportDedupeDecision changedDecision = decision(LhImportDecisionType.CHANGED_REPARSE, true, true, false);
+        given(dedupeDecisionService.decide(fixture.item(), null, null, false)).willReturn(listDecision);
+        given(dedupeDecisionService.decide(fixture.item(), fixture.detail(), fixture.pdfUrl(), false)).willReturn(changedDecision);
+        given(persistenceService.upsertLh(fixture.item())).willReturn(announcement);
+        given(pdfParsingService.parse(fixture.pdfUrl())).willReturn(pdfResult);
+        willThrow(new RuntimeException("geocode down"))
+                .given(geocodingEnrichmentService).enrichNotRequestedUnits(1L);
+
+        NoticeImportOrchestrator.ImportResult result = orchestrator.importLhNotices(1, 1);
+
+        assertThat(result.imported()).isEqualTo(1);
+        assertThat(result.failed()).isZero();
+        then(persistenceService).should().upsertLhDetail(eq("PAN-001"), eq(fixture.detail()), eq(pdfResult), anyString());
+        then(geocodingEnrichmentService).should().enrichNotRequestedUnits(1L);
+        then(dedupeDecisionService).should().recordSuccess(announcement, changedDecision, objectMapper.writeValueAsString(pdfResult));
+    }
+
+    @Test
+    void reimportAnnouncementRunsGeocodingAfterReplacingUnits() throws Exception {
+        ReimportFixture fixture = givenReimportNotice();
+        PdfParseResult pdfResult = pdfResult();
+        LhImportDedupeDecision forceDecision = decision(LhImportDecisionType.FORCE_REPARSE, true, true, false);
+        given(dedupeDecisionService.decide(fixture.item(), fixture.detail(), fixture.pdfUrl(), true)).willReturn(forceDecision);
+        given(pdfParsingService.parse(fixture.pdfUrl())).willReturn(pdfResult);
+
+        orchestrator.reimportAnnouncement(1L);
+
+        then(persistenceService).should().upsertLhDetail(eq("PAN-001"), eq(fixture.detail()), eq(pdfResult), anyString());
+        then(geocodingEnrichmentService).should().enrichNotRequestedUnits(1L);
+        then(dedupeDecisionService).should()
+                .recordSuccess(fixture.announcement(), forceDecision, objectMapper.writeValueAsString(pdfResult));
+    }
+
+    @Test
+    void reimportAnnouncementIgnoresGeocodingFailureAndRecordsSuccess() throws Exception {
+        ReimportFixture fixture = givenReimportNotice();
+        PdfParseResult pdfResult = pdfResult();
+        LhImportDedupeDecision forceDecision = decision(LhImportDecisionType.FORCE_REPARSE, true, true, false);
+        given(dedupeDecisionService.decide(fixture.item(), fixture.detail(), fixture.pdfUrl(), true)).willReturn(forceDecision);
+        given(pdfParsingService.parse(fixture.pdfUrl())).willReturn(pdfResult);
+        willThrow(new RuntimeException("geocode down"))
+                .given(geocodingEnrichmentService).enrichNotRequestedUnits(1L);
+
+        orchestrator.reimportAnnouncement(1L);
+
+        then(geocodingEnrichmentService).should().enrichNotRequestedUnits(1L);
+        then(dedupeDecisionService).should()
+                .recordSuccess(fixture.announcement(), forceDecision, objectMapper.writeValueAsString(pdfResult));
     }
 
     @Test
@@ -239,6 +303,39 @@ class NoticeImportOrchestratorTest {
         return new ImportFixture(item, detail, pdfUrl, force);
     }
 
+    private ReimportFixture givenReimportNotice() throws Exception {
+        Announcement announcement = announcement();
+        JsonNode item = objectMapper.readTree("""
+                {
+                  "PAN_ID":"PAN-001",
+                  "CCR_CNNT_SYS_DS_CD":"03",
+                  "SPL_INF_TP_CD":"050"
+                }
+                """);
+        JsonNode detail = objectMapper.readTree("""
+                {"dsAhflInfo":[{"AHFL_URL":"https://example.com/a.pdf","CMN_AHFL_NM":"notice.pdf"}]}
+                """);
+        String pdfUrl = "https://example.com/a.pdf";
+        AnnouncementParseRaw raw = AnnouncementParseRaw.builder()
+                .announcement(announcement)
+                .rawType("LH_ITEM_JSON")
+                .rawText(objectMapper.writeValueAsString(item))
+                .collectedAt(LocalDateTime.now())
+                .build();
+
+        given(announcementRepository.findByIdAndDeletedFalse(1L)).willReturn(Optional.of(announcement));
+        given(announcementParseRawRepository.findByAnnouncementIdAndRawType(1L, "LH_ITEM_JSON")).willReturn(Optional.of(raw));
+        given(persistenceService.text(item, "PAN_ID")).willReturn("PAN-001");
+        given(persistenceService.text(item, "CCR_CNNT_SYS_DS_CD")).willReturn("03");
+        given(persistenceService.text(item, "SPL_INF_TP_CD")).willReturn("050");
+        given(lhApiClient.fetchNoticeDetail("PAN-001", "03", "050")).willReturn(detail);
+        given(persistenceService.findArray(detail, "dsAhflInfo")).willReturn(detail.get("dsAhflInfo"));
+        JsonNode attachment = detail.get("dsAhflInfo").get(0);
+        given(persistenceService.text(attachment, "AHFL_URL")).willReturn(pdfUrl);
+        given(persistenceService.text(attachment, "CMN_AHFL_NM")).willReturn("notice.pdf");
+        return new ReimportFixture(announcement, item, detail, pdfUrl);
+    }
+
     private LhImportDedupeDecision decision(LhImportDecisionType decisionType,
                                             boolean shouldParseGemini,
                                             boolean shouldPersistOfficial,
@@ -295,5 +392,8 @@ class NoticeImportOrchestratorTest {
     }
 
     private record ImportFixture(JsonNode item, JsonNode detail, String pdfUrl, boolean force) {
+    }
+
+    private record ReimportFixture(Announcement announcement, JsonNode item, JsonNode detail, String pdfUrl) {
     }
 }
