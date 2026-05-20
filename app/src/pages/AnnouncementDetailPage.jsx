@@ -23,6 +23,10 @@ const S = {
   infoItem: { padding: '13px 0', borderBottom: '1px solid rgba(0,0,0,0.06)', display: 'flex', alignItems: 'flex-start', gap: 12 },
   infoLabel: { fontSize: 13, color: '#6a6a6a', fontWeight: 400, minWidth: 80, flexShrink: 0, paddingTop: 2 },
   infoValue: { fontSize: 14, color: '#222', fontWeight: 500, lineHeight: 1.5 },
+  unitGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 16 },
+  unitCard: { background: '#fff', border: '1px solid rgba(0,0,0,0.08)', borderRadius: 16, padding: 18 },
+  unitBadge: { display: 'inline-flex', alignItems: 'center', borderRadius: 999, padding: '5px 10px', background: '#fff0f3', color: '#ff385c', fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap' },
+  unitMeta: { display: 'flex', justifyContent: 'space-between', gap: 12, padding: '8px 0', borderBottom: '1px solid rgba(0,0,0,0.04)' },
   stickyCard: {
     position: 'sticky', top: 90, background: '#fff', borderRadius: 20, padding: 28,
     boxShadow: 'var(--shadow-card)',
@@ -95,6 +99,15 @@ export default function AnnouncementDetailPage() {
   const dday = calcDday(a.applicationEndDate);
   const ddayColor = getDdayColor(a.applicationEndDate);
   const val = (v) => v ?? '-';
+  const amount = (v) => v != null ? `${formatPrice(v)} 만원` : '-';
+  const area = (unit) => unit.exclusiveAreaText || (unit.exclusiveAreaValue != null ? `${unit.exclusiveAreaValue}㎡` : '-');
+  const salePrice = (unit) => {
+    if (unit.salePriceMin != null && unit.salePriceMax != null) return `${formatPrice(unit.salePriceMin)} ~ ${formatPrice(unit.salePriceMax)} 만원`;
+    if (unit.salePriceMin != null) return `${formatPrice(unit.salePriceMin)} 만원부터`;
+    if (unit.salePriceMax != null) return `${formatPrice(unit.salePriceMax)} 만원까지`;
+    return '-';
+  };
+  const units = Array.isArray(a.units) ? a.units : [];
 
   const infoItems = [
     ['공급기관', val(a.providerName)],
@@ -203,6 +216,42 @@ export default function AnnouncementDetailPage() {
               ))}
             </div>
           </div>
+
+          {units.length > 0 && (
+            <div style={{ marginBottom: 40 }}>
+              <h2 style={S.sectionTitle}>공급 단위 정보</h2>
+              <div style={S.unitGrid}>
+                {units.map((unit, idx) => (
+                  <div key={`${unit.unitOrder ?? idx}-${unit.complexName ?? ''}-${unit.houseType ?? ''}`} style={S.unitCard}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'flex-start', marginBottom: 12 }}>
+                      <div>
+                        <div style={{ fontSize: 15, fontWeight: 700, color: '#222', lineHeight: 1.4 }}>{val(unit.complexName)}</div>
+                        <div style={{ fontSize: 12, color: '#6a6a6a', lineHeight: 1.5, marginTop: 4 }}>
+                          {[unit.regionLevel1, unit.regionLevel2].filter(Boolean).join(' ') || '-'}
+                        </div>
+                      </div>
+                      <span style={S.unitBadge}>#{unit.unitOrder ?? idx + 1}</span>
+                    </div>
+                    <div style={{ fontSize: 12, color: '#6a6a6a', lineHeight: 1.6, marginBottom: 10 }}>{val(unit.fullAddress)}</div>
+                    {[
+                      ['공급유형', val(unit.supplyType)],
+                      ['주택유형', val(unit.houseType)],
+                      ['전용면적', area(unit)],
+                      ['보증금', amount(unit.depositAmount)],
+                      ['월세', amount(unit.monthlyRentAmount)],
+                      ['분양가', salePrice(unit)],
+                      ['공급세대수', unit.supplyHouseholdCount != null ? `${unit.supplyHouseholdCount} 세대` : '-'],
+                    ].map(([label, value]) => (
+                      <div key={label} style={S.unitMeta}>
+                        <span style={{ fontSize: 12, color: '#6a6a6a', flexShrink: 0 }}>{label}</span>
+                        <span style={{ fontSize: 13, color: '#222', fontWeight: 600, textAlign: 'right' }}>{value}</span>
+                      </div>
+                    ))}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Guide Text */}
           {a.guideText && (
