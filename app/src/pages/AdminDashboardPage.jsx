@@ -12,6 +12,8 @@ const STAT_CARDS = [
   { key: 'totalAnnouncements', label: '전체 공고', code: 'TOTAL', color: '#6B7280', bg: '#F9FAFB' },
 ];
 
+const TODAY_CARD = { key: 'processedToday', label: '오늘 처리', code: 'TODAY', color: '#ff385c', bg: '#fff0f3' };
+
 export default function AdminDashboardPage() {
   const [stats, setStats] = useState({});
   const [loading, setLoading] = useState(true);
@@ -38,9 +40,9 @@ export default function AdminDashboardPage() {
       <h1 style={{ fontSize: 26, fontWeight: 700, color: '#222', marginBottom: 32 }}>관리자 대시보드</h1>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 16 }}>
-        {STAT_CARDS.slice(0, 4).map(card => (
+        {[TODAY_CARD, ...STAT_CARDS.slice(0, 3)].map(card => (
           <div key={card.key}
-            onClick={() => card.code !== 'TOTAL' && navigate(`/admin/review?status=${card.code}`)}
+            onClick={() => card.code === 'TODAY' ? navigate('/admin/review') : navigate(`/admin/review?status=${card.code}`)}
             style={{
               padding: 24, borderRadius: 16, background: card.bg, cursor: 'pointer',
               transition: 'transform 0.15s, box-shadow 0.15s', textAlign: 'center',
@@ -56,7 +58,7 @@ export default function AdminDashboardPage() {
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 32 }}>
-        {STAT_CARDS.slice(4).map(card => (
+        {STAT_CARDS.slice(3).map(card => (
           <div key={card.key}
             onClick={() => card.code === 'RE_IMPORT' ? navigate('/admin/review?status=RE_IMPORT') : navigate('/admin/review')}
             style={{

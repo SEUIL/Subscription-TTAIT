@@ -80,16 +80,98 @@ function fmt(value) {
   return value;
 }
 
+function boolLabel(value) {
+  if (value === true) return '예';
+  if (value === false) return '아니오';
+  return '미확인';
+}
+
+function boolInputValue(value) {
+  if (value === true) return 'true';
+  if (value === false) return 'false';
+  return '';
+}
+
+function boolFromInput(value) {
+  if (value === 'true') return true;
+  if (value === 'false') return false;
+  return null;
+}
+
+function numberOrNull(value) {
+  if (value === '' || value === null || value === undefined) return null;
+  return Number(value);
+}
+
+function parseScheduleDetails(value) {
+  if (!value) return { raw: '', entries: [] };
+  const raw = typeof value === 'string' ? value : JSON.stringify(value, null, 2);
+  const parsed = typeof value === 'string' ? JSON.parse(value) : value;
+  if (!parsed || typeof parsed !== 'object') return { raw, entries: [] };
+  const entries = Array.isArray(parsed)
+    ? parsed.map((item, idx) => [`일정 ${idx + 1}`, item])
+    : Object.entries(parsed);
+  return { raw, entries };
+}
+
+function ScheduleDetailsSection({ value }) {
+  let details;
+  try {
+    details = parseScheduleDetails(value);
+  } catch {
+    details = { raw: typeof value === 'string' ? value : String(value ?? ''), entries: [] };
+  }
+
+  return (
+    <div style={S.card}>
+      <h2 style={S.cardTitle}>일정 세부 정보</h2>
+      {details.entries.length > 0 ? (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 10, marginBottom: 14 }}>
+          {details.entries.map(([key, item]) => (
+            <div key={key} style={{ borderRadius: 14, background: '#fafafa', padding: 14 }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: '#6a6a6a', marginBottom: 7 }}>{key}</div>
+              <div style={{ fontSize: 13, fontWeight: 600, color: '#222', lineHeight: 1.6, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                {typeof item === 'object' && item !== null ? JSON.stringify(item, null, 2) : fmt(item)}
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <p style={{ fontSize: 13, color: '#6a6a6a', margin: '0 0 14px' }}>구조화 가능한 일정 세부값이 없습니다.</p>
+      )}
+      <details>
+        <summary style={{ cursor: 'pointer', color: '#222', fontSize: 13, fontWeight: 800 }}>JSON 원문 / 텍스트 보기</summary>
+        <div style={{ marginTop: 10, borderRadius: 12, background: '#f8f8f8', color: '#6a6a6a', padding: 14, fontSize: 12, lineHeight: 1.7, whiteSpace: 'pre-wrap', maxHeight: 260, overflow: 'auto' }}>
+          {details.raw || 'scheduleDetailsJson 없음'}
+        </div>
+      </details>
+    </div>
+  );
+}
+
+function AdminRawSection({ title, children, accent = false }) {
+  return (
+    <div style={{ ...S.card, border: accent ? '1px solid rgba(255,56,92,0.18)' : undefined, background: accent ? '#fffdfd' : '#fff' }}>
+      <h2 style={S.cardTitle}>{title}</h2>
+      {children}
+    </div>
+  );
+}
+
 function UnitRawDetails({ unit }) {
   const [open, setOpen] = useState(false);
-  if (!unit.rawText && !unit.sourceUnitKey) return <span style={{ color: '#c1c1c1' }}>근거 없음</span>;
+  if (!unit.rawText && !unit.sourceUnitKey && !unit.salePriceRaw && !unit.unitId) return <span style={{ color: '#c1c1c1' }}>근거 없음</span>;
   return (
     <div>
       <button type="button" onClick={() => setOpen(v => !v)} style={{ border: 'none', borderRadius: 8, background: '#f2f2f2', color: '#222', padding: '7px 10px', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
-        {open ? '접기' : 'raw/source 보기'}
+        {open ? '접기' : '원문 / 디버그 보기'}
       </button>
       {open && (
         <div style={{ marginTop: 10, maxWidth: 520, borderRadius: 12, background: '#f8f8f8', color: '#6a6a6a', padding: 12, fontSize: 12, lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
+          {unit.unitId && <div style={{ marginBottom: 8, color: '#222', fontWeight: 700 }}>unitId: {unit.unitId}</div>}
+          <div style={{ marginBottom: 8, color: '#222', fontWeight: 700 }}>지역: {[unit.regionLevel1, unit.regionLevel2].filter(Boolean).join(' ') || '-'}</div>
+          {unit.exclusiveAreaValue != null && <div style={{ marginBottom: 8, color: '#222', fontWeight: 700 }}>exclusiveAreaValue: {unit.exclusiveAreaValue}</div>}
+          {unit.salePriceRaw && <div style={{ marginBottom: 8, color: '#222', fontWeight: 700 }}>salePriceRaw: {unit.salePriceRaw}</div>}
           {unit.rawText || 'rawText 없음'}
           {unit.sourceUnitKey && <div style={{ marginTop: 8, color: '#222', fontWeight: 700 }}>sourceUnitKey: {unit.sourceUnitKey}</div>}
         </div>
@@ -104,7 +186,7 @@ function ReviewUnitsSection({ units = [] }) {
     <div style={S.card}>
       <h2 style={S.cardTitle}>공급 단위 검수</h2>
       <p style={{ fontSize: 14, color: '#6a6a6a', lineHeight: 1.7, margin: '0 0 16px' }}>
-        units[]는 <b>announcement_unit</b> 테이블 기반 관리자 검수용 데이터입니다. rawText, sourceUnitKey는 admin-only 필드이므로 public 화면에 노출하면 안 됩니다.
+        units[]는 <b>announcement_unit</b> 테이블 기반 관리자 검수용 데이터입니다. rawText, sourceUnitKey, salePriceRaw 등 원문/출처 필드는 admin-only 필드이므로 public 화면에 노출하면 안 됩니다.
       </p>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 10, marginBottom: 16 }}>
         <div style={{ borderRadius: 14, background: '#fafafa', padding: 14 }}><div style={{ fontSize: 22, fontWeight: 800 }}>{units.length}</div><div style={{ color: '#6a6a6a', fontSize: 12, fontWeight: 700 }}>전체 units</div></div>
@@ -121,7 +203,10 @@ function ReviewUnitsSection({ units = [] }) {
           <tbody>
             {units.map((unit, idx) => (
               <tr key={unit.id || unit.sourceUnitKey || idx}>
-                <td style={S.td}>{unit.unitOrder ?? idx + 1}</td>
+                <td style={S.td}>
+                  <div style={{ fontWeight: 700 }}>{unit.unitOrder ?? idx + 1}</div>
+                  <div style={{ color: '#6a6a6a', fontSize: 12, marginTop: 4 }}>unitId {fmt(unit.unitId)}</div>
+                </td>
                 <td style={S.td}>
                   <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 8 }}>
                     <Badge kind="source" value={unit.unitSource} />
@@ -131,17 +216,22 @@ function ReviewUnitsSection({ units = [] }) {
                 </td>
                 <td style={S.td}>
                   <div style={{ fontWeight: 700 }}>{fmt(unit.complexName)}</div>
+                  <div style={{ color: '#222', fontSize: 12, fontWeight: 600, marginTop: 4 }}>{[unit.regionLevel1, unit.regionLevel2].filter(Boolean).join(' ') || '-'}</div>
                   <div style={{ color: '#6a6a6a', fontSize: 12, marginTop: 4 }}>{fmt(unit.fullAddress)}</div>
                 </td>
                 <td style={S.td}>
                   <div>{fmt(unit.supplyTypeNormalized)} <span style={{ color: '#6a6a6a' }}>({fmt(unit.supplyTypeRaw)})</span></div>
                   <div style={{ marginTop: 6 }}>{fmt(unit.houseTypeNormalized)} <span style={{ color: '#6a6a6a' }}>({fmt(unit.houseTypeRaw)})</span></div>
                 </td>
-                <td style={S.td}>{fmt(unit.exclusiveAreaText)}</td>
+                <td style={S.td}>
+                  <div>{fmt(unit.exclusiveAreaText)}</div>
+                  <div style={{ color: '#6a6a6a', fontSize: 12, marginTop: 4 }}>전용 {unit.exclusiveAreaValue != null ? `${unit.exclusiveAreaValue}㎡` : '-'}</div>
+                </td>
                 <td style={S.td}>
                   <div>보증금: <b>{fmt(unit.depositAmount)}</b></div>
                   <div>월세: <b>{fmt(unit.monthlyRentAmount)}</b></div>
                   <div style={{ color: '#6a6a6a', fontSize: 12 }}>분양가: {fmt(unit.salePriceMin)} ~ {fmt(unit.salePriceMax)}</div>
+                  {unit.salePriceRaw && <div style={{ color: '#ff385c', fontSize: 12, fontWeight: 700, marginTop: 4 }}>원문 가격 있음</div>}
                 </td>
                 <td style={S.td}>{fmt(unit.supplyHouseholdCount)}</td>
                 <td style={S.td}><UnitRawDetails unit={unit} /></td>
@@ -168,9 +258,10 @@ export default function AdminReviewDetailPage() {
   const [submitting, setSubmitting] = useState(false);
 
   const [corrections, setCorrections] = useState({
+    depositAmount: '', monthlyRentAmount: '', supplyHouseholdCount: '',
     ageMin: '', ageMax: '', maritalTargetType: 'ANY', marriageYearLimit: '',
-    homelessRequired: false, lowIncomeRequired: false, elderlyRequired: false,
-    elderlyAgeMin: '65', childrenMinCount: '',
+    homelessRequired: '', lowIncomeRequired: '', elderlyRequired: '',
+    elderlyAgeMin: '', childrenMinCount: '',
   });
 
   useEffect(() => {
@@ -181,14 +272,17 @@ export default function AdminReviewDetailPage() {
           const d = await res.json();
           setData(d);
           setCorrections({
+            depositAmount: d.depositAmount ?? '',
+            monthlyRentAmount: d.monthlyRentAmount ?? '',
+            supplyHouseholdCount: d.supplyHouseholdCount ?? '',
             ageMin: d.ageMin ?? '',
             ageMax: d.ageMax ?? '',
             maritalTargetType: d.maritalTargetType || 'ANY',
             marriageYearLimit: d.marriageYearLimit ?? '',
-            homelessRequired: d.homelessRequired ?? false,
-            lowIncomeRequired: d.lowIncomeRequired ?? false,
-            elderlyRequired: d.elderlyRequired ?? false,
-            elderlyAgeMin: d.elderlyAgeMin ?? '65',
+            homelessRequired: boolInputValue(d.homelessRequired),
+            lowIncomeRequired: boolInputValue(d.lowIncomeRequired),
+            elderlyRequired: boolInputValue(d.elderlyRequired),
+            elderlyAgeMin: d.elderlyAgeMin ?? '',
             childrenMinCount: d.childrenMinCount ?? '',
           });
         }
@@ -212,11 +306,17 @@ export default function AdminReviewDetailPage() {
       if (action === 'CORRECT') {
         body.corrections = {
           ...corrections,
-          ageMin: corrections.ageMin ? Number(corrections.ageMin) : null,
-          ageMax: corrections.ageMax ? Number(corrections.ageMax) : null,
-          marriageYearLimit: corrections.marriageYearLimit ? Number(corrections.marriageYearLimit) : null,
-          elderlyAgeMin: corrections.elderlyAgeMin ? Number(corrections.elderlyAgeMin) : null,
-          childrenMinCount: corrections.childrenMinCount ? Number(corrections.childrenMinCount) : null,
+          depositAmount: numberOrNull(corrections.depositAmount),
+          monthlyRentAmount: numberOrNull(corrections.monthlyRentAmount),
+          supplyHouseholdCount: numberOrNull(corrections.supplyHouseholdCount),
+          ageMin: numberOrNull(corrections.ageMin),
+          ageMax: numberOrNull(corrections.ageMax),
+          marriageYearLimit: numberOrNull(corrections.marriageYearLimit),
+          elderlyAgeMin: numberOrNull(corrections.elderlyAgeMin),
+          childrenMinCount: numberOrNull(corrections.childrenMinCount),
+          homelessRequired: boolFromInput(corrections.homelessRequired),
+          lowIncomeRequired: boolFromInput(corrections.lowIncomeRequired),
+          elderlyRequired: boolFromInput(corrections.elderlyRequired),
         };
       }
       const res = await api.post(`/api/admin/review/${id}`, body);
@@ -249,11 +349,13 @@ export default function AdminReviewDetailPage() {
   ].filter(Boolean).join('\n\n');
 
   const units = data.units || data.announcementUnits || [];
+  const hasReviewHistory = data.reviewedBy || data.reviewedAt || data.reviewNote;
   const summaryItems = [
     ['원천', data.sourcePrimary, 'badge'],
     ['원천 공고 ID', data.sourceNoticeId],
     ['원천 URL', data.sourceNoticeUrl, 'link'],
     ['공고 상태', data.noticeStatus, 'badge'],
+    ['공고 유형', data.noticeType],
     ['공고일', data.announcementDate],
     ['신청 시작일', data.applicationStartDate],
     ['신청 마감일', data.applicationEndDate],
@@ -311,13 +413,14 @@ export default function AdminReviewDetailPage() {
               ['월세', data.monthlyRentAmount != null ? `${Number(data.monthlyRentAmount).toLocaleString()}만원` : null],
               ['공급 세대수', data.supplyHouseholdCount != null ? `${data.supplyHouseholdCount}세대` : null],
               ['세대수 신뢰도', data.supplyHouseholdCountConfidence],
+              ['세대수 산정 근거', data.supplyHouseholdCountBasis],
               ['최소 나이', data.ageMin],
               ['최대 나이', data.ageMax],
               ['혼인 조건', data.maritalTargetType],
               ['혼인 기간 제한', data.marriageYearLimit ? `${data.marriageYearLimit}년` : null],
-              ['무주택 필수', data.homelessRequired ? '예' : '아니오'],
-              ['저소득 필수', data.lowIncomeRequired ? '예' : '아니오'],
-              ['고령자 필수', data.elderlyRequired ? '예' : '아니오'],
+              ['무주택 필수', boolLabel(data.homelessRequired)],
+              ['저소득 필수', boolLabel(data.lowIncomeRequired)],
+              ['고령자 필수', boolLabel(data.elderlyRequired)],
               ['고령자 기준나이', data.elderlyAgeMin ? `${data.elderlyAgeMin}세` : null],
               ['최소 자녀수', data.childrenMinCount],
             ].map(([l, v]) => (
@@ -332,9 +435,29 @@ export default function AdminReviewDetailPage() {
             <div style={{ fontSize: 13, color: '#6a6a6a', lineHeight: 1.8, whiteSpace: 'pre-wrap', background: '#f9fafb', padding: 16, borderRadius: 12, maxHeight: 400, overflow: 'auto' }}>
               {rawTextParts || '원문 텍스트 없음'}
             </div>
+            <details style={{ marginTop: 12 }}>
+              <summary style={{ cursor: 'pointer', color: '#222', fontSize: 13, fontWeight: 800 }}>가격 원문 / 출처 근거 보기</summary>
+              <div style={{ marginTop: 10, fontSize: 13, color: '#6a6a6a', lineHeight: 1.7, whiteSpace: 'pre-wrap', background: '#f9fafb', padding: 14, borderRadius: 12, maxHeight: 220, overflow: 'auto' }}>
+                {data.salePriceRaw || 'salePriceRaw 없음'}
+              </div>
+            </details>
           </div>
         </div>
       </div>
+
+      <ScheduleDetailsSection value={data.scheduleDetailsJson} />
+
+      <AdminRawSection title="중요 안내 원문" accent>
+        <div style={{ borderRadius: 14, background: '#fff0f3', color: '#222', padding: 16, fontSize: 13, lineHeight: 1.8, whiteSpace: 'pre-wrap', maxHeight: 180, overflow: 'auto' }}>
+          {data.importantNotesRaw || 'importantNotesRaw 없음'}
+        </div>
+        <details style={{ marginTop: 12 }}>
+          <summary style={{ cursor: 'pointer', color: '#ff385c', fontSize: 13, fontWeight: 800 }}>긴 원문 전체 보기</summary>
+          <div style={{ marginTop: 10, borderRadius: 12, background: '#f8f8f8', color: '#6a6a6a', padding: 14, fontSize: 12, lineHeight: 1.7, whiteSpace: 'pre-wrap', maxHeight: 300, overflow: 'auto' }}>
+            {data.importantNotesRaw || 'importantNotesRaw 없음'}
+          </div>
+        </details>
+      </AdminRawSection>
 
       <ReviewUnitsSection units={units} />
 
@@ -356,6 +479,9 @@ export default function AdminReviewDetailPage() {
         {action === 'CORRECT' && (
           <div style={{ padding: 20, background: '#f9fafb', borderRadius: 16, marginBottom: 24 }}>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16 }}>
+              <div><label style={S.label}>보증금 (만원)</label><input style={S.input} type="number" value={corrections.depositAmount} onChange={e => setCorr('depositAmount', e.target.value)} /></div>
+              <div><label style={S.label}>월세 (만원)</label><input style={S.input} type="number" value={corrections.monthlyRentAmount} onChange={e => setCorr('monthlyRentAmount', e.target.value)} /></div>
+              <div><label style={S.label}>공급 세대수</label><input style={S.input} type="number" value={corrections.supplyHouseholdCount} onChange={e => setCorr('supplyHouseholdCount', e.target.value)} /></div>
               <div><label style={S.label}>최소 나이</label><input style={S.input} type="number" value={corrections.ageMin} onChange={e => setCorr('ageMin', e.target.value)} /></div>
               <div><label style={S.label}>최대 나이</label><input style={S.input} type="number" value={corrections.ageMax} onChange={e => setCorr('ageMax', e.target.value)} /></div>
               <div><label style={S.label}>혼인 조건</label><select style={S.select} value={corrections.maritalTargetType} onChange={e => setCorr('maritalTargetType', e.target.value)}>{MARITAL_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}</select></div>
@@ -363,9 +489,13 @@ export default function AdminReviewDetailPage() {
             </div>
             <div style={{ display: 'flex', gap: 24, marginTop: 16, flexWrap: 'wrap' }}>
               {[['homelessRequired', '무주택 필수'], ['lowIncomeRequired', '저소득 필수'], ['elderlyRequired', '고령자 필수']].map(([k, l]) => (
-                <label key={k} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, color: '#222', cursor: 'pointer' }}>
-                  <input type="checkbox" checked={corrections[k]} onChange={e => setCorr(k, e.target.checked)} />
+                <label key={k} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, color: '#222' }}>
                   {l}
+                  <select style={{ ...S.select, width: 120, height: 38 }} value={corrections[k]} onChange={e => setCorr(k, e.target.value)}>
+                    <option value="">변경 안 함</option>
+                    <option value="true">예</option>
+                    <option value="false">아니오</option>
+                  </select>
                 </label>
               ))}
             </div>
@@ -390,11 +520,11 @@ export default function AdminReviewDetailPage() {
         </div>
       </div>
 
-      {data.reviewedBy && (
+      {hasReviewHistory && (
         <div style={S.card}>
           <h2 style={S.cardTitle}>검수 이력</h2>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-            <p style={{ fontSize: 14, color: '#222' }}>검수자: <strong>{data.reviewedBy}</strong></p>
+            <p style={{ fontSize: 14, color: '#222' }}>검수자: <strong>{data.reviewedBy || '검수자 미기록'}</strong></p>
             {data.reviewedAt && <p style={{ fontSize: 13, color: '#6a6a6a' }}>처리일: {new Date(data.reviewedAt).toLocaleString('ko-KR')}</p>}
             {data.reviewNote && <p style={{ fontSize: 13, color: '#6a6a6a' }}>메모: {data.reviewNote}</p>}
           </div>

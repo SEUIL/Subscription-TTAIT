@@ -22,6 +22,14 @@ const STATUS_COLORS = {
   RE_IMPORT: { bg: '#FAF5FF', color: '#8B5CF6' },
 };
 
+const NOTICE_STATUS_COLORS = {
+  OPEN: { bg: '#f0fdf4', color: '#166534' },
+  UPCOMING: { bg: '#eff6ff', color: '#1d4ed8' },
+  CLOSED: { bg: '#f2f2f2', color: '#6a6a6a' },
+  ENDED: { bg: '#f2f2f2', color: '#6a6a6a' },
+  DRAFT: { bg: '#fff7ed', color: '#c2410c' },
+};
+
 function fmt(value) {
   if (value === null || value === undefined || value === '') return '-';
   if (typeof value === 'number') return value.toLocaleString('ko-KR');
@@ -30,6 +38,11 @@ function fmt(value) {
 
 function money(value) {
   return value != null ? `${Number(value).toLocaleString('ko-KR')}만` : '-';
+}
+
+function period(start, end) {
+  if (!start && !end) return '-';
+  return `${fmt(start)} ~ ${fmt(end)}`;
 }
 
 function MiniBadge({ children, tone = 'neutral' }) {
@@ -111,10 +124,10 @@ export default function AdminReviewListPage() {
         <>
           {/* Table */}
           <div style={{ background: '#fff', borderRadius: 16, overflowX: 'auto', boxShadow: 'var(--shadow-card)' }}>
-            <table style={{ width: '100%', minWidth: 1180, borderCollapse: 'collapse' }}>
+            <table style={{ width: '100%', minWidth: 1280, borderCollapse: 'collapse' }}>
               <thead>
                 <tr style={{ borderBottom: '2px solid rgba(0,0,0,0.08)' }}>
-                  {['ID', '공고/기관', '지역/마감', '유형', '금액', '세대/Unit', '상태/검수'].map(h => (
+                  {['ID', '공고/단지/기관', '지역/주소', '접수 기간', '공고 상태', '유형', '금액', '세대/Unit', '검수 상태'].map(h => (
                     <th key={h} style={{ padding: '14px 16px', fontSize: 13, fontWeight: 600, color: '#6a6a6a', textAlign: 'left' }}>{h}</th>
                   ))}
                 </tr>
@@ -122,6 +135,7 @@ export default function AdminReviewListPage() {
               <tbody>
                 {reviews.map(r => {
                   const sc = STATUS_COLORS[r.reviewStatus] || { bg: '#f2f2f2', color: '#6a6a6a' };
+                  const nc = NOTICE_STATUS_COLORS[r.noticeStatus] || { bg: '#f2f2f2', color: '#6a6a6a' };
                   return (
                     <tr key={r.announcementId || r.id}
                       onClick={() => navigate(`/admin/review/${r.announcementId || r.id}`)}
@@ -136,11 +150,22 @@ export default function AdminReviewListPage() {
                       <td style={{ padding: '14px 16px', fontSize: 14, color: '#6a6a6a' }}>{r.announcementId || r.id}</td>
                       <td style={{ padding: '14px 16px', maxWidth: 360 }}>
                         <div style={{ fontSize: 14, fontWeight: 700, color: '#222', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.noticeName || '-'}</div>
-                        <div style={{ fontSize: 12, color: '#6a6a6a', marginTop: 5 }}>{fmt(r.providerName)}</div>
+                        <div style={{ fontSize: 12, color: '#222', fontWeight: 600, marginTop: 5 }}>{fmt(r.complexName)}</div>
+                        <div style={{ fontSize: 12, color: '#6a6a6a', marginTop: 4 }}>{fmt(r.providerName)}</div>
                       </td>
                       <td style={{ padding: '14px 16px', fontSize: 13, color: '#222' }}>
                         <div style={{ fontWeight: 700 }}>{[r.regionLevel1, r.regionLevel2].filter(Boolean).join(' ') || '-'}</div>
-                        <div style={{ color: '#6a6a6a', marginTop: 5 }}>마감 {fmt(r.applicationEndDate)}</div>
+                        <div style={{ color: '#6a6a6a', marginTop: 5, maxWidth: 220, lineHeight: 1.5 }}>{fmt(r.fullAddress)}</div>
+                      </td>
+                      <td style={{ padding: '14px 16px', fontSize: 13, color: '#222', lineHeight: 1.6 }}>
+                        <div style={{ fontWeight: 700 }}>{period(r.applicationStartDate, r.applicationEndDate)}</div>
+                        <div style={{ color: '#6a6a6a', marginTop: 3 }}>마감 {fmt(r.applicationEndDate)}</div>
+                      </td>
+                      <td style={{ padding: '14px 16px' }}>
+                        <div style={{ fontSize: 11, fontWeight: 700, color: '#6a6a6a', marginBottom: 6 }}>공고 상태</div>
+                        <span style={{ padding: '4px 10px', borderRadius: 6, fontSize: 11, fontWeight: 700, background: nc.bg, color: nc.color }}>
+                          {fmt(r.noticeStatus)}
+                        </span>
                       </td>
                       <td style={{ padding: '14px 16px' }}>
                         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
@@ -159,6 +184,7 @@ export default function AdminReviewListPage() {
                         </div>
                       </td>
                       <td style={{ padding: '14px 16px' }}>
+                        <div style={{ fontSize: 11, fontWeight: 700, color: '#6a6a6a', marginBottom: 6 }}>검수 상태</div>
                         <span style={{ padding: '4px 10px', borderRadius: 6, fontSize: 11, fontWeight: 600, background: sc.bg, color: sc.color }}>
                           {r.reviewStatus}
                         </span>
