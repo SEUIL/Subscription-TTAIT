@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Naver Geocoding Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 40px 20px;
+            background: #f5f7fb;
+            color: #1f2937;
+        }
+
+        .wrap {
+            max-width: 840px;
+            margin: 0 auto;
+            background: #fff;
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: 0 20px 40px rgba(15, 23, 42, 0.08);
+        }
+
+        h1 {
+            margin-top: 0;
+            font-size: 28px;
+        }
+
+        p {
+            line-height: 1.6;
+        }
+
+        form {
+            display: flex;
+            gap: 12px;
+            margin: 20px 0 16px;
+        }
+
+        input {
+            flex: 1;
+            height: 48px;
+            padding: 0 14px;
+            border: 1px solid #cbd5e1;
+            border-radius: 10px;
+            font-size: 15px;
+        }
+
+        button {
+            height: 48px;
+            padding: 0 18px;
+            border: none;
+            border-radius: 10px;
+            background: #16a34a;
+            color: #fff;
+            font-size: 15px;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        pre {
+            min-height: 240px;
+            margin: 0;
+            padding: 16px;
+            border-radius: 12px;
+            background: #0f172a;
+            color: #e2e8f0;
+            overflow: auto;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+
+        .hint {
+            font-size: 14px;
+            color: #64748b;
+        }
+    </style>
+</head>
+<body>
+<div class="wrap">
+    <h1>Naver Geocoding Test</h1>
+    <p>시크릿은 브라우저로 보내지지 않고, 백엔드가 네이버 Geocoding API를 대신 호출합니다.</p>
+
+    <form id="geocode-form">
+        <input id="query" name="query" type="text" placeholder="예: 서울특별시 성동구 왕십리로 83-21" required>
+        <button type="submit">좌표 조회</button>
+    </form>
+
+    <p class="hint">로컬 프로필에서만 열립니다. 결과 JSON에서 <code>addresses[0].x</code>는 경도, <code>addresses[0].y</code>는 위도입니다.</p>
+    <pre id="result">결과가 여기 표시됩니다.</pre>
+</div>
+
+<script>
+    const form = document.getElementById('geocode-form');
+    const result = document.getElementById('result');
+
+    form.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const query = document.getElementById('query').value.trim();
+
+        if (!query) {
+            result.textContent = '주소를 입력해 주세요.';
+            return;
+        }
+
+        result.textContent = '조회 중...';
+
+        try {
+            const response = await fetch(`/api/dev/naver-geocode?query=${encodeURIComponent(query)}`);
+            const responseText = await response.text();
+            if (!response.ok) {
+                result.textContent = `요청 실패 (${response.status})\n${responseText}`;
+                return;
+            }
+            const data = JSON.parse(responseText);
+            result.textContent = JSON.stringify(data, null, 2);
+        } catch (error) {
+            result.textContent = `요청 실패: ${error.message}`;
+        }
+    });
+</script>
+</body>
+</html>
