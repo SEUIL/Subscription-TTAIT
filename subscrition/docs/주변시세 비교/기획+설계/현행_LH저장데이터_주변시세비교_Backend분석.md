@@ -1,5 +1,7 @@
 # [현행] LH 저장 데이터 기준 주변 시세 비교 Backend 분석
 
+<!-- markdownlint-disable MD013 MD060 -->
+
 ## 1. 문서 목적
 
 이 문서는 `LH API + PDF AI 파싱`으로 현재 DB에 저장되는 데이터를 기준으로, `주변 시세 비교` 기능을 만들 때 어떤 데이터가 이미 있고 어떤 데이터가 부족한지 정리한다.
@@ -19,7 +21,7 @@
 | 공고별 주소/가격 표시 | 가능 | `Announcement`, `AnnouncementDetail`, `AnnouncementUnit`에 주소와 가격 일부가 저장됨 |
 | unit별 면적/가격 기준 비교 | 부분 가능 | `AnnouncementUnit`에 면적, 보증금, 월세, 분양가가 있음 |
 | 법정동 기준 RTMS 조회 | 현재 불가 | `legalCode` 필드는 있으나 LH import에서 채워지지 않음 |
-| 지도/반경 기반 주변 비교 | 현재 불가 | `latitude`, `longitude` 저장 구조가 없음 |
+| 지도/반경 기반 주변 비교 | 부분 가능 | `AnnouncementUnit` 좌표 저장은 1차 MVP 완료. 다만 RTMS/market snapshot과 주소 정밀도 보강이 필요 |
 | 주변 실거래가 평균/중앙값 비교 | 현재 불가 | 정식 backend에 RTMS 수집/market snapshot 테이블이 없음 |
 
 따라서 최종 구조는 다음 흐름이 되어야 한다.
@@ -28,8 +30,8 @@
 LH 목록/상세 수집
 → PDF AI 파싱
 → AnnouncementUnit 저장
-→ unit 주소 정규화
-→ geocoding으로 좌표 + 법정동 코드 보강
+→ Naver Geocoding으로 unit 좌표 보강(1차 MVP 완료)
+→ unit 주소 정규화와 법정동 코드 보강
 → LAWD_CD + DEAL_YMD 기준 RTMS 수집
 → market raw/snapshot 저장
 → unit별 market comparison 계산
