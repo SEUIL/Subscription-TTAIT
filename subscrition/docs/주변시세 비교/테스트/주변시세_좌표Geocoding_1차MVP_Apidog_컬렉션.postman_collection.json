@@ -1,0 +1,565 @@
+{
+  "info": {
+    "_postman_id": "b8c5f0e9-3a3f-4d44-9f9f-ttait-geocoding-mvp",
+    "name": "주변시세 좌표 Geocoding 1차 MVP Apidog 테스트",
+    "description": "주변시세 비교 1차 MVP의 AnnouncementUnit 좌표 저장, Naver Geocoding, import/reimport 보강, admin review detail 검증용 Apidog import 컬렉션입니다.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080",
+      "type": "string"
+    },
+    {
+      "key": "adminLoginId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "adminPassword",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "adminToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "announcementId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "candidateId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "geocodeQuery",
+      "value": "서울특별시 강남구 학동로 426",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "00. 실행 확인",
+      "item": [
+        {
+          "name": "Swagger UI 확인",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/swagger-ui/index.html",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "swagger-ui",
+                "index.html"
+              ]
+            },
+            "description": "local profile backend가 실행 중인지 확인합니다. 기대값: HTTP 200 또는 Swagger UI HTML."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Swagger UI 또는 backend 응답 확인', function () {",
+                  "  pm.expect(pm.response.code).to.be.oneOf([200, 302]);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "01. Dev Geocoding",
+      "item": [
+        {
+          "name": "정상 주소 Geocoding",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/dev/naver-geocode?query={{geocodeQuery}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "dev",
+                "naver-geocode"
+              ],
+              "query": [
+                {
+                  "key": "query",
+                  "value": "{{geocodeQuery}}"
+                }
+              ]
+            },
+            "description": "Naver Geocoding 단건 정상 호출 확인. 기대값: HTTP 200, status=SUCCESS, latitude/longitude 존재."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Geocoding 응답 필드 확인', function () {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json).to.have.property('status');",
+                  "  if (json.status === 'SUCCESS') {",
+                  "    pm.expect(json.latitude).to.not.eql(null);",
+                  "    pm.expect(json.longitude).to.not.eql(null);",
+                  "  }",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "결과 없음 또는 실패 Geocoding",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/dev/naver-geocode?query=존재하지않는주소테스트값12345",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "dev",
+                "naver-geocode"
+              ],
+              "query": [
+                {
+                  "key": "query",
+                  "value": "존재하지않는주소테스트값12345"
+                }
+              ]
+            },
+            "description": "결과 없음/실패 상태 확인. 기대값: NO_RESULT 또는 FAILED. 외부 API 정책에 따라 결과가 달라질 수 있습니다."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 응답 확인', function () { pm.expect(pm.response.code).to.be.oneOf([200, 400, 500]); });",
+                  "pm.test('secret 미노출 확인', function () {",
+                  "  const text = pm.response.text();",
+                  "  pm.expect(text).to.not.include('NAVER_MAPS_CLIENT_SECRET');",
+                  "  pm.expect(text).to.not.include('client-secret');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "02. Auth",
+      "item": [
+        {
+          "name": "관리자 로그인",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"loginId\": \"{{adminLoginId}}\",\n  \"password\": \"{{adminPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "ADMIN 계정으로 로그인합니다. 응답 accessToken을 adminToken 환경 변수에 저장합니다."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('로그인 성공', function () { pm.response.to.have.status(200); });",
+                  "const json = pm.response.json();",
+                  "if (json.accessToken) {",
+                  "  pm.environment.set('adminToken', json.accessToken);",
+                  "}",
+                  "pm.test('ADMIN role 확인', function () {",
+                  "  pm.expect(json).to.have.property('role');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "03. LH Import",
+      "item": [
+        {
+          "name": "LH 후보 수집",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/import/lh/candidates/collect?page=1&size=10",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "import",
+                "lh",
+                "candidates",
+                "collect"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "size",
+                  "value": "10"
+                }
+              ]
+            },
+            "description": "LH 후보를 수집합니다. 성공 후 후보 목록 조회에서 candidateId를 확인합니다."
+          },
+          "response": []
+        },
+        {
+          "name": "검수 대기 후보 목록 조회",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/import/lh/candidates?page=0&size=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "import",
+                "lh",
+                "candidates"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "20"
+                }
+              ]
+            },
+            "description": "후보 목록에서 테스트할 candidateId를 확인한 뒤 환경 변수 candidateId에 저장합니다."
+          },
+          "response": []
+        },
+        {
+          "name": "선택 후보 import",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"candidateIds\": [{{candidateId}}],\n  \"force\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/import/lh/selected",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "import",
+                "lh",
+                "selected"
+              ]
+            },
+            "description": "선택한 후보만 import합니다. 기대값: HTTP 200, failed=0. 이후 announcementId를 확인해 저장합니다."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('선택 import HTTP 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('failed 카운터 확인', function () {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json).to.have.property('failed');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "기존 LH 공고 단건 강제 재파싱",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/import/lh/{{announcementId}}/force-reparse",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "import",
+                "lh",
+                "{{announcementId}}",
+                "force-reparse"
+              ]
+            },
+            "description": "기존 공고를 강제 reimport/reparse합니다. 이후 admin review detail에서 unit 좌표/status가 다시 보강됐는지 확인합니다."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "04. Review Detail",
+      "item": [
+        {
+          "name": "특정 공고 상세 검수 데이터 조회",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/review/{{announcementId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "review",
+                "{{announcementId}}"
+              ]
+            },
+            "description": "unit별 latitude, longitude, geocodeStatus, geocodedAt, geocodeMessage를 확인합니다."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('상세 검수 조회 HTTP 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('units geocode 필드 확인', function () {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json).to.have.property('units');",
+                  "  if (Array.isArray(json.units) && json.units.length > 0) {",
+                  "    pm.expect(json.units[0]).to.have.property('latitude');",
+                  "    pm.expect(json.units[0]).to.have.property('longitude');",
+                  "    pm.expect(json.units[0]).to.have.property('geocodeStatus');",
+                  "    pm.expect(json.units[0]).to.have.property('geocodedAt');",
+                  "    pm.expect(json.units[0]).to.have.property('geocodeMessage');",
+                  "  }",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "public 공고 상세 조회 경계 확인",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/announcements/{{announcementId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "announcements",
+                "{{announcementId}}"
+              ]
+            },
+            "description": "현재 public detail은 unit 배열을 직접 내려주지 않습니다. unit별 좌표/status 수동 확인은 admin review detail 기준입니다."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "05. Negative",
+      "item": [
+        {
+          "name": "admin token 없이 검수 상세 조회",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/review/{{announcementId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "review",
+                "{{announcementId}}"
+              ]
+            },
+            "description": "Authorization 없이 호출하면 401 또는 403이어야 합니다."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('인증/권한 실패 응답 확인', function () {",
+                  "  pm.expect(pm.response.code).to.be.oneOf([401, 403]);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "존재하지 않는 공고 상세 검수 조회",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/review/999999999",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "review",
+                "999999999"
+              ]
+            },
+            "description": "존재하지 않는 공고 ID는 404 또는 프로젝트 공통 오류 응답이어야 합니다."
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}

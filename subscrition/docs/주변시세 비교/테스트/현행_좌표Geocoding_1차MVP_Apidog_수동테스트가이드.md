@@ -77,7 +77,7 @@ Apidog request group은 아래 순서로 만든다.
 | - | - | - |
 | 1 | Health / Startup | backend와 local profile 동작 확인 |
 | 2 | Dev Geocoding | Naver Geocoding 단건 호출 확인 |
-| 3 | Admin Import | LH 후보 수집, 선택 import, force reparse 확인 |
+| 3 | Admin Import | legacy import 또는 LH 후보 수집/선택 import 확인 |
 | 4 | Admin Review Detail | unit별 좌표/status 응답 확인 |
 | 5 | Negative / Edge | 결과 없음, 잘못된 주소, 인증 실패 등 확인 |
 | 6 | DB Cross-check | 필요 시 `announcement_unit` 직접 확인 |
@@ -185,7 +185,32 @@ Authorization: Bearer {{adminToken}}
 
 관리자 계정이 없으면 DB에 이미 존재하는 ADMIN 계정 또는 팀에서 사용하는 local admin 계정을 사용한다. 임의 계정 생성으로 ADMIN 권한이 자동 부여되는지는 별도 확인이 필요하다.
 
-## 9. 시나리오 5: LH 후보 수집
+## 9. 시나리오 5: LH import 실행
+
+### 권장 흐름
+
+DB를 reset하고 관리자 계정만 만든 local 수동 테스트에서는 legacy import를 우선 사용한다.
+이 경로는 후보 staging을 거치지 않고 LH 목록, 상세, PDF AI 파싱, 정식 DB 저장을 한 번에 실행하므로 좌표/Geocoding MVP 확인에 더 단순하다.
+
+```http
+POST {{baseUrl}}/api/admin/import/lh?page=1&size=3
+Authorization: Bearer {{adminToken}}
+```
+
+기대 응답:
+
+```json
+{
+  "imported": 1,
+  "failed": 0
+}
+```
+
+legacy import 응답은 내부 상세 카운터를 노출하지 않는다. 따라서 실제 검증은 이후 `GET /api/admin/review`와 DB cross-check로 수행한다.
+
+### 후보 선택 흐름
+
+후보를 먼저 보고 선택 import해야 하는 운영 관리자 흐름을 확인할 때는 아래 후보 수집 API를 사용한다.
 
 ### API
 
@@ -221,8 +246,8 @@ Content-Type: application/json
 
 ```json
 {
-  "fetched": 0,
-  "scanned": 0,
+  "fetched": 1,
+  "scanned": 1,
   "skippedLand": 0,
   "unchanged": 0,
   "geminiSkipped": 0,
@@ -238,6 +263,7 @@ Content-Type: application/json
 - 신규 또는 변경 공고라면 `imported` 또는 `reparsed`가 증가할 수 있다.
 - 같은 공고를 반복 실행하면 dedupe 정책에 따라 `unchanged`, `geminiSkipped`가 증가할 수 있다.
 - import 성공 후 내부에서 Geocoding enrichment가 best-effort로 실행된다.
+- 좌표/Geocoding MVP만 빠르게 확인할 때는 legacy import 흐름을 우선 사용해도 된다.
 
 ## 11. 시나리오 7: 관리자 검수 상세에서 unit 좌표/status 확인
 
@@ -354,6 +380,36 @@ order by unit_order asc;
 - `SUCCESS` row는 `latitude`, `longitude`, `geocoded_at`이 있어야 한다.
 - `NO_RESULT`, `FAILED`, `SKIPPED_NO_ADDRESS` row는 좌표가 `null`일 수 있다.
 
+좌표 성공 검증용 공고를 찾는 SQL:
+
+```sql
+select
+    a.id as announcement_id,
+    a.notice_name,
+    e.review_status,
+    count(u.id) as unit_count,
+    sum(case when u.full_address is not null and trim(u.full_address) <> '' then 1 else 0 end) as address_unit_count,
+    sum(case when u.geocode_status = 'SUCCESS'
+              and u.latitude is not null
+              and u.longitude is not null
+              and u.geocoded_at is not null
+             then 1 else 0 end) as success_geocode_count
+from announcement a
+join announcement_eligibility e
+  on e.announcement_id = a.id
+join announcement_unit u
+  on u.announcement_id = a.id
+ and u.deleted = false
+where a.deleted = false
+group by a.id, a.notice_name, e.review_status
+having unit_count > 0
+   and address_unit_count > 0
+   and success_geocode_count > 0
+order by a.id desc;
+```
+
+`units=[]` 공고는 import 실패가 아니라 단위 row 미추출 공고다. 이번 좌표/Geocoding MVP 수동 검증 대상에서는 제외하고, 다음 스프린트에서 재파싱/수동 보완/비교 제외 정책을 정한다.
+
 ## 15. 단위 테스트식 체크리스트
 
 Apidog에서 각 요청을 실행한 뒤 아래 항목을 수동 assertion처럼 확인한다.
@@ -390,6 +446,7 @@ Apidog에서 각 요청을 실행한 뒤 아래 항목을 수동 assertion처럼
 | admin API 401 | `Authorization: Bearer {{adminToken}}` 누락 또는 만료 |
 | admin API 403 | token role이 `ADMIN`인지 확인 |
 | import `failed > 0` | LH/Gemini/PDF 파싱 실패인지, Geocoding 실패인지 로그로 구분 |
+| `units=[]` | 단위 row 미추출 공고. 이번 MVP 검증 대상에서 제외하고 후속 backlog로 분류 |
 | unit이 `NOT_REQUESTED` | enrichment 호출 여부, 해당 unit의 `fullAddress`, repository 대상 조건 확인 |
 | `SUCCESS`인데 좌표가 null | bug 가능성이 높음. 저장 로직과 DB schema 확인 |
 | 좌표가 반대로 보임 | Naver `x=longitude`, `y=latitude` 매핑 확인 |
@@ -408,6 +465,7 @@ Apidog collection은 아래처럼 구성한다.
 ├─ 02. Auth
 │  └─ Admin Login
 ├─ 03. LH Import
+│  ├─ legacy import
 │  ├─ 후보 수집
 │  ├─ 선택 import
 │  └─ force reparse
@@ -435,5 +493,24 @@ Apidog collection은 아래처럼 구성한다.
 - `/api/dev/naver-geocode` 정상 주소 호출이 HTTP `200`과 `SUCCESS` 좌표 응답을 반환한다.
 - 관리자 import 또는 force reparse가 HTTP `200`으로 완료되고 import `failed`가 `0`이다.
 - `GET /api/admin/review/{announcementId}`의 `units[]`에서 좌표와 Geocoding 상태를 확인할 수 있다.
-- 실패/결과 없음 케이스에서 secret이나 raw external payload가 노출되지 않는다.
 - Geocoding 실패가 import 전체 실패로 전파되지 않는다.
+- 실패/결과 없음 케이스에서 secret이나 raw external payload가 노출되지 않는다.
+
+### 18.1 2026-05-21 완료 기록
+
+DB reset 후 관리자 계정만 생성한 local 환경에서 legacy import로 수동 검증을 완료했다.
+
+| 항목 | 확인값 |
+| - | - |
+| import 경로 | `POST /api/admin/import/lh?page=1&size=3` |
+| 확인 API | `GET /api/admin/review/6` |
+| `announcementId` | `6` |
+| `unitId` | `2` |
+| `fullAddress` | `김포시 마산동` |
+| `geocodeStatus` | `SUCCESS` |
+| `latitude` | `37.6436520` |
+| `longitude` | `126.6412840` |
+| `geocodedAt` | `2026-05-21T11:17:51.116245` |
+| `reviewStatus` | `PENDING` |
+
+위 결과로 `LH import -> AnnouncementUnit 저장 -> Naver Geocoding 보강 -> admin review detail 좌표/status 노출` 흐름은 1차 MVP 기준 통과로 본다.
