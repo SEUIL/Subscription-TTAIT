@@ -1,4 +1,4 @@
-# [현행] 좌표/Geocoding 1차 MVP Apidog 수동 테스트 가이드
+# [이전] 좌표/Geocoding 1차 MVP Apidog 수동 테스트 가이드
 
 <!-- markdownlint-disable MD013 MD024 -->
 
