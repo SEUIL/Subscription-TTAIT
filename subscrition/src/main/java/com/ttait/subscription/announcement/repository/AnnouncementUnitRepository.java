@@ -17,6 +17,8 @@ public interface AnnouncementUnitRepository extends JpaRepository<AnnouncementUn
 
     List<AnnouncementUnit> findByAnnouncementIdInAndDeletedFalseOrderByAnnouncementIdAscUnitOrderAsc(List<Long> announcementIds);
 
+    Optional<AnnouncementUnit> findByIdAndAnnouncementIdAndDeletedFalse(Long id, Long announcementId);
+
     Optional<AnnouncementUnit> findByAnnouncementIdAndUnitSourceAndSourceUnitKeyAndDeletedFalse(
             Long announcementId,
             AnnouncementUnitSource unitSource,

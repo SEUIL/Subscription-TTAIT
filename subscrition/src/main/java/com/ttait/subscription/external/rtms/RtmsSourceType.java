@@ -1,12 +1,12 @@
 package com.ttait.subscription.external.rtms;
 
 public enum RtmsSourceType {
-    APT_RENT("/OpenAPI_ToolInstallPackage/service/rest/RTMSOBJSvc/getRTMSDataSvcAptRent"),
-    APT_TRADE("/OpenAPI_ToolInstallPackage/service/rest/RTMSOBJSvc/getRTMSDataSvcAptTrade"),
-    ROW_HOUSE_RENT("/OpenAPI_ToolInstallPackage/service/rest/RTMSOBJSvc/getRTMSDataSvcRHTradeRent"),
-    ROW_HOUSE_TRADE("/OpenAPI_ToolInstallPackage/service/rest/RTMSOBJSvc/getRTMSDataSvcRHTrade"),
-    OFFICETEL_RENT("/OpenAPI_ToolInstallPackage/service/rest/RTMSOBJSvc/getRTMSDataSvcOffiRent"),
-    OFFICETEL_TRADE("/OpenAPI_ToolInstallPackage/service/rest/RTMSOBJSvc/getRTMSDataSvcOffiTrade");
+    APT_RENT("/1613000/RTMSDataSvcAptRent/getRTMSDataSvcAptRent"),
+    APT_TRADE("/1613000/RTMSDataSvcAptTrade/getRTMSDataSvcAptTrade"),
+    ROW_HOUSE_RENT("/1613000/RTMSDataSvcRHRent/getRTMSDataSvcRHRent"),
+    ROW_HOUSE_TRADE("/1613000/RTMSDataSvcRHTrade/getRTMSDataSvcRHTrade"),
+    OFFICETEL_RENT("/1613000/RTMSDataSvcOffiRent/getRTMSDataSvcOffiRent"),
+    OFFICETEL_TRADE("/1613000/RTMSDataSvcOffiTrade/getRTMSDataSvcOffiTrade");
 
     private final String path;
 

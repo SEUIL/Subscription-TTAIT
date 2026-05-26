@@ -53,6 +53,44 @@ class RtmsResponseAdapterTest {
     }
 
     @Test
+    void adaptsCurrentDataGoKrRentXmlToTypedTransactions() {
+        String xml = """
+                <response>
+                  <header>
+                    <resultCode>000</resultCode>
+                    <resultMsg>OK</resultMsg>
+                  </header>
+                  <body>
+                    <items>
+                      <item>
+                        <umdNm>부평동</umdNm>
+                        <aptNm>신규아파트</aptNm>
+                        <jibun>100-1</jibun>
+                        <roadNm>시장로</roadNm>
+                        <buildYear>2015</buildYear>
+                        <excluUseAr>25.77</excluUseAr>
+                        <floor>5</floor>
+                        <deposit>3,000</deposit>
+                        <monthlyRent>40</monthlyRent>
+                      </item>
+                    </items>
+                  </body>
+                </response>
+                """;
+
+        RtmsApiResult result = adapter.adapt(xml, RtmsSourceType.APT_RENT, "28200", "202405");
+
+        assertThat(result.status()).isEqualTo(RtmsApiResult.Status.SUCCESS);
+        RtmsTransactionItem item = result.items().get(0);
+        assertThat(item.legalDongName()).isEqualTo("부평동");
+        assertThat(item.buildingName()).isEqualTo("신규아파트");
+        assertThat(item.exclusiveArea()).isEqualByComparingTo(new BigDecimal("25.77"));
+        assertThat(item.depositAmount()).isEqualTo(3000L);
+        assertThat(item.monthlyRentAmount()).isEqualTo(40L);
+        assertThat(item.tradeAmount()).isNull();
+    }
+
+    @Test
     void adaptsTradeXmlToTypedTransactions() {
         String xml = """
                 <response>
