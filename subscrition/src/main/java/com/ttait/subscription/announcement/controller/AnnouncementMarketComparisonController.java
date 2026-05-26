@@ -25,7 +25,7 @@ public class AnnouncementMarketComparisonController {
 
     @Operation(
             summary = "공고 단위 주변시세 비교",
-            description = "공고 단위의 보증금/월세와 사전에 집계된 주변시세 snapshot을 비교합니다. status는 COMPARABLE, NO_UNIT, NO_LAWD_CODE, NO_SNAPSHOT, INSUFFICIENT_DATA 등이 될 수 있습니다."
+            description = "공고 단위의 보증금/월세와 사전에 집계된 주변시세 snapshot을 비교합니다. status는 COMPARABLE, INSUFFICIENT_DATA, SNAPSHOT_NOT_FOUND, UNIT_LAWD_CD_MISSING, UNIT_AREA_MISSING 등이 될 수 있습니다."
     )
     @GetMapping("/{announcementId}/units/{unitId}/market-comparison")
     public MarketComparisonResponse compareUnitMarketPrice(

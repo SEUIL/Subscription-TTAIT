@@ -78,10 +78,10 @@ LSP diagnostics는 현재 환경에서 반복적으로 중단되었으므로 최
 
 ## 8. 최종 상태
 
-C 작업은 구현, 테스트, build, 문서 정리까지 완료됐다.
+C 작업은 구현, 테스트, build, 문서 정리까지 완료됐고 `perf/public-list-pagination` branch를 통해 main에 병합됐다.
 
-아직 commit 전 상태이며, 커밋한다면 다음처럼 분리하는 것이 적절하다.
+병합 기준:
 
-1. `feat : 공고 목록 DB filtering pagination 적용`
-2. `test : 공고 목록 검색 repository 검증 추가`
-3. `docs : 공고 목록 성능 개선 반영 문서화`
+- PR: `#1`
+- merge commit: `cba951e Merge pull request #1 from SEUIL/perf/public-list-pagination`
+- 현재 main에서는 public 공고 목록 조회가 DB filtering/pagination 기반으로 동작한다.

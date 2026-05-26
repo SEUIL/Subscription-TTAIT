@@ -1,4 +1,4 @@
-# [현행] 좌표/Geocoding 1차 MVP 개발 완료 요약
+# [이전] 좌표/Geocoding 1차 MVP 개발 완료 요약
 
 <!-- markdownlint-disable MD013 -->
 
