@@ -27,13 +27,24 @@ public class RtmsResponseAdapter {
                     .parse(new ByteArrayInputStream(xml.getBytes(StandardCharsets.UTF_8)));
             String resultCode = text(document.getDocumentElement(), "resultCode");
             String resultMessage = text(document.getDocumentElement(), "resultMsg");
+            Integer totalCount = integerOrNull(text(document.getDocumentElement(), "totalCount"));
+            Integer pageNo = integerOrNull(text(document.getDocumentElement(), "pageNo"));
+            Integer numOfRows = integerOrNull(text(document.getDocumentElement(), "numOfRows"));
+            if (StringUtils.hasText(resultCode) && isNoDataResultCode(resultCode)) {
+                return RtmsApiResult.noResult(
+                        resultMessage == null ? "RTMS response has no data" : resultMessage,
+                        totalCount,
+                        pageNo,
+                        numOfRows
+                );
+            }
             if (StringUtils.hasText(resultCode) && !isSuccessResultCode(resultCode)) {
                 return RtmsApiResult.failed(resultMessage == null ? "RTMS API error" : resultMessage);
             }
 
             NodeList itemNodes = document.getElementsByTagName("item");
             if (itemNodes.getLength() == 0) {
-                return RtmsApiResult.noResult("RTMS response has no items");
+                return RtmsApiResult.noResult("RTMS response has no items", totalCount, pageNo, numOfRows);
             }
 
             List<RtmsTransactionItem> items = new ArrayList<>();
@@ -41,7 +52,7 @@ public class RtmsResponseAdapter {
                 Element item = (Element) itemNodes.item(index);
                 items.add(toItem(item, sourceType, lawdCd, dealYm));
             }
-            return RtmsApiResult.success(items);
+            return RtmsApiResult.success(items, totalCount, pageNo, numOfRows);
         } catch (Exception exception) {
             return RtmsApiResult.failed("RTMS response parse failed");
         }
@@ -49,6 +60,10 @@ public class RtmsResponseAdapter {
 
     private boolean isSuccessResultCode(String resultCode) {
         return "00".equals(resultCode) || "000".equals(resultCode);
+    }
+
+    private boolean isNoDataResultCode(String resultCode) {
+        return "03".equals(resultCode) || "INFO-200".equals(resultCode);
     }
 
     private DocumentBuilderFactory documentBuilderFactory() throws ParserConfigurationException {
@@ -108,6 +123,10 @@ public class RtmsResponseAdapter {
     }
 
     private Integer integer(String value) {
+        return StringUtils.hasText(value) ? Integer.valueOf(value.trim()) : null;
+    }
+
+    private Integer integerOrNull(String value) {
         return StringUtils.hasText(value) ? Integer.valueOf(value.trim()) : null;
     }
 

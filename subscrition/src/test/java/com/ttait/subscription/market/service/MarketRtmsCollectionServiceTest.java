@@ -144,6 +144,47 @@ class MarketRtmsCollectionServiceTest {
         assertThat(mayHash).isNotEqualTo(juneHash);
     }
 
+    @Test
+    void collectAllFetchesPagesUntilTotalCountIsCovered() {
+        RtmsTransactionItem first = item("page1-row1");
+        RtmsTransactionItem second = item("page1-row2");
+        RtmsTransactionItem third = item("page2-row1");
+        given(rtmsClient.fetch(RtmsSourceType.APT_RENT, "41570", "202405", 1, 2))
+                .willReturn(RtmsApiResult.success(List.of(first, second), 3, 1, 2));
+        given(rtmsClient.fetch(RtmsSourceType.APT_RENT, "41570", "202405", 2, 2))
+                .willReturn(RtmsApiResult.success(List.of(third), 3, 2, 2));
+        given(rawRepository.existsByRawPayloadHash(any())).willReturn(false);
+        given(rawRepository.save(any(MarketTransactionRaw.class))).willAnswer(invocation -> invocation.getArgument(0));
+
+        MarketRtmsCollectionService.CollectionAllResult result = service.collectAll(
+                RtmsSourceType.APT_RENT, "41570", "202405", 2, 10);
+
+        assertThat(result.status()).isEqualTo(RtmsApiResult.Status.SUCCESS);
+        assertThat(result.fetchedCount()).isEqualTo(3);
+        assertThat(result.savedCount()).isEqualTo(3);
+        assertThat(result.duplicateCount()).isZero();
+        assertThat(result.collectedPageCount()).isEqualTo(2);
+        assertThat(result.totalCount()).isEqualTo(3);
+        then(rtmsClient).should().fetch(RtmsSourceType.APT_RENT, "41570", "202405", 1, 2);
+        then(rtmsClient).should().fetch(RtmsSourceType.APT_RENT, "41570", "202405", 2, 2);
+        then(rtmsClient).should(never()).fetch(RtmsSourceType.APT_RENT, "41570", "202405", 3, 2);
+    }
+
+    @Test
+    void collectAllReturnsNoResultWhenFirstPageHasNoData() {
+        given(rtmsClient.fetch(RtmsSourceType.APT_RENT, "41570", "202405", 1, 100))
+                .willReturn(RtmsApiResult.noResult("NO_DATA", 0, 1, 100));
+
+        MarketRtmsCollectionService.CollectionAllResult result = service.collectAll(
+                RtmsSourceType.APT_RENT, "41570", "202405", 100, null);
+
+        assertThat(result.status()).isEqualTo(RtmsApiResult.Status.NO_RESULT);
+        assertThat(result.fetchedCount()).isZero();
+        assertThat(result.collectedPageCount()).isZero();
+        assertThat(result.totalCount()).isZero();
+        then(rawRepository).should(never()).save(any());
+    }
+
     private RtmsTransactionItem item(String rawPayload) {
         return new RtmsTransactionItem(
                 RtmsSourceType.APT_RENT,

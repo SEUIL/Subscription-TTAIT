@@ -9,6 +9,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.ttait.subscription.admin.dto.RtmsCollectionAllRequest;
+import com.ttait.subscription.admin.dto.RtmsCollectionAllResponse;
 import com.ttait.subscription.admin.dto.RtmsCollectionRequest;
 import com.ttait.subscription.admin.dto.RtmsCollectionResponse;
 import com.ttait.subscription.admin.service.AdminMarketCollectionService;
@@ -62,4 +64,26 @@ class AdminMarketCollectionControllerTest {
         assertThat(request.getValue().lawdCd()).isEqualTo("41570");
         assertThat(request.getValue().dealYm()).isEqualTo("202405");
     }
+    @Test
+    void collectAllRtmsReturnsPageSummary() throws Exception {
+        given(collectionService.collectAllRtms(any())).willReturn(new RtmsCollectionAllResponse(
+                "APT_RENT", "41570", "202405", "SUCCESS", 150, 140, 10, 0, 2, 150, null));
+
+        mockMvc.perform(post("/api/admin/market/rtms/collect-all")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(new RtmsCollectionAllRequest(
+                                RtmsSourceType.APT_RENT, "41570", "202405", null, 10))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.sourceType").value("APT_RENT"))
+                .andExpect(jsonPath("$.fetchedCount").value(150))
+                .andExpect(jsonPath("$.savedCount").value(140))
+                .andExpect(jsonPath("$.collectedPageCount").value(2))
+                .andExpect(jsonPath("$.totalCount").value(150));
+
+        ArgumentCaptor<RtmsCollectionAllRequest> request = ArgumentCaptor.forClass(RtmsCollectionAllRequest.class);
+        then(collectionService).should().collectAllRtms(request.capture());
+        assertThat(request.getValue().sourceType()).isEqualTo(RtmsSourceType.APT_RENT);
+        assertThat(request.getValue().maxPages()).isEqualTo(10);
+    }
+
 }
