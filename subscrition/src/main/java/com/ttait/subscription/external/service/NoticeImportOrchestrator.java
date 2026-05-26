@@ -28,6 +28,7 @@ public class NoticeImportOrchestrator {
     private final NoticeImportPersistenceService persistenceService;
     private final PdfParsingService pdfParsingService;
     private final LhImportDedupeDecisionService dedupeDecisionService;
+    private final AnnouncementUnitAddressEnrichmentService addressEnrichmentService;
     private final AnnouncementUnitGeocodingEnrichmentService geocodingEnrichmentService;
     private final ObjectMapper objectMapper;
     private final AnnouncementRepository announcementRepository;
@@ -37,6 +38,7 @@ public class NoticeImportOrchestrator {
                                       NoticeImportPersistenceService persistenceService,
                                       PdfParsingService pdfParsingService,
                                       LhImportDedupeDecisionService dedupeDecisionService,
+                                      AnnouncementUnitAddressEnrichmentService addressEnrichmentService,
                                       AnnouncementUnitGeocodingEnrichmentService geocodingEnrichmentService,
                                       ObjectMapper objectMapper,
                                       AnnouncementRepository announcementRepository,
@@ -45,6 +47,7 @@ public class NoticeImportOrchestrator {
         this.persistenceService = persistenceService;
         this.pdfParsingService = pdfParsingService;
         this.dedupeDecisionService = dedupeDecisionService;
+        this.addressEnrichmentService = addressEnrichmentService;
         this.geocodingEnrichmentService = geocodingEnrichmentService;
         this.objectMapper = objectMapper;
         this.announcementRepository = announcementRepository;
@@ -410,6 +413,11 @@ public class NoticeImportOrchestrator {
     }
 
     private void enrichUnitsAfterImport(Announcement announcement) {
+        try {
+            addressEnrichmentService.enrichNotRequestedUnits(announcement.getId());
+        } catch (RuntimeException e) {
+            log.warn("Post-import address enrichment failed announcementId={}", announcement.getId(), e);
+        }
         try {
             geocodingEnrichmentService.enrichNotRequestedUnits(announcement.getId());
         } catch (RuntimeException e) {
