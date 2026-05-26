@@ -5,6 +5,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 
+import com.ttait.subscription.admin.dto.RtmsCollectionAllRequest;
+import com.ttait.subscription.admin.dto.RtmsCollectionAllResponse;
 import com.ttait.subscription.admin.dto.RtmsCollectionRequest;
 import com.ttait.subscription.admin.dto.RtmsCollectionResponse;
 import com.ttait.subscription.common.exception.ApiException;
@@ -58,4 +60,22 @@ class AdminMarketCollectionServiceTest {
                 .isInstanceOf(ApiException.class)
                 .hasMessage("sourceType is required");
     }
+    @Test
+    void collectAllRtmsUsesDefaultsAndReturnsPageSummary() {
+        given(marketRtmsCollectionService.collectAll(RtmsSourceType.APT_RENT, "41570", "202405", 100, 10))
+                .willReturn(new MarketRtmsCollectionService.CollectionAllResult(
+                        RtmsSourceType.APT_RENT, "41570", "202405", RtmsApiResult.Status.SUCCESS,
+                        150, 140, 10, 0, 2, 150, null));
+
+        RtmsCollectionAllResponse response = service.collectAllRtms(new RtmsCollectionAllRequest(
+                RtmsSourceType.APT_RENT, "41570", "202405", null, 10));
+
+        assertThat(response.status()).isEqualTo("SUCCESS");
+        assertThat(response.fetchedCount()).isEqualTo(150);
+        assertThat(response.savedCount()).isEqualTo(140);
+        assertThat(response.collectedPageCount()).isEqualTo(2);
+        assertThat(response.totalCount()).isEqualTo(150);
+        then(marketRtmsCollectionService).should().collectAll(RtmsSourceType.APT_RENT, "41570", "202405", 100, 10);
+    }
+
 }

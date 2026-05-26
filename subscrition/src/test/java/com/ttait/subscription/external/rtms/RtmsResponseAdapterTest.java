@@ -18,6 +18,9 @@ class RtmsResponseAdapterTest {
                     <resultMsg>NORMAL SERVICE.</resultMsg>
                   </header>
                   <body>
+                    <numOfRows>100</numOfRows>
+                    <pageNo>1</pageNo>
+                    <totalCount>1</totalCount>
                     <items>
                       <item>
                         <법정동>마산동</법정동>
@@ -39,6 +42,9 @@ class RtmsResponseAdapterTest {
 
         assertThat(result.status()).isEqualTo(RtmsApiResult.Status.SUCCESS);
         assertThat(result.items()).hasSize(1);
+        assertThat(result.totalCount()).isEqualTo(1);
+        assertThat(result.pageNo()).isEqualTo(1);
+        assertThat(result.numOfRows()).isEqualTo(100);
         RtmsTransactionItem item = result.items().get(0);
         assertThat(item.sourceType()).isEqualTo(RtmsSourceType.APT_RENT);
         assertThat(item.lawdCd()).isEqualTo("41570");
@@ -131,6 +137,30 @@ class RtmsResponseAdapterTest {
 
         assertThat(result.status()).isEqualTo(RtmsApiResult.Status.NO_RESULT);
         assertThat(result.items()).isEmpty();
+    }
+
+    @Test
+    void returnsNoResultForCurrentNoDataResultCode() {
+        String xml = """
+                <response>
+                  <header>
+                    <resultCode>03</resultCode>
+                    <resultMsg>NO_DATA</resultMsg>
+                  </header>
+                  <body>
+                    <numOfRows>100</numOfRows>
+                    <pageNo>1</pageNo>
+                    <totalCount>0</totalCount>
+                    <items />
+                  </body>
+                </response>
+                """;
+
+        RtmsApiResult result = adapter.adapt(xml, RtmsSourceType.APT_RENT, "41570", "202405");
+
+        assertThat(result.status()).isEqualTo(RtmsApiResult.Status.NO_RESULT);
+        assertThat(result.message()).isEqualTo("NO_DATA");
+        assertThat(result.totalCount()).isZero();
     }
 
     @Test
