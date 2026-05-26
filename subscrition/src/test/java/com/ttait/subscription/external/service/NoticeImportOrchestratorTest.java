@@ -42,6 +42,8 @@ class NoticeImportOrchestratorTest {
     @Mock
     private LhImportDedupeDecisionService dedupeDecisionService;
     @Mock
+    private AnnouncementUnitAddressEnrichmentService addressEnrichmentService;
+    @Mock
     private AnnouncementUnitGeocodingEnrichmentService geocodingEnrichmentService;
     @Mock
     private AnnouncementRepository announcementRepository;
@@ -58,6 +60,7 @@ class NoticeImportOrchestratorTest {
                 persistenceService,
                 pdfParsingService,
                 dedupeDecisionService,
+                addressEnrichmentService,
                 geocodingEnrichmentService,
                 objectMapper,
                 announcementRepository,
@@ -233,6 +236,29 @@ class NoticeImportOrchestratorTest {
         then(persistenceService).should().upsertLhDetail(eq("PAN-001"), eq(fixture.detail()), eq(pdfResult), anyString());
         then(geocodingEnrichmentService).should().enrichNotRequestedUnits(1L);
         then(dedupeDecisionService).should().recordSuccess(announcement, forceDecision, objectMapper.writeValueAsString(pdfResult));
+    }
+
+    @Test
+    void addressEnrichmentFailureDoesNotFailImportSuccessOrSkipGeocoding() throws Exception {
+        ImportFixture fixture = givenSingleNoticePage(false, true);
+        Announcement announcement = announcement();
+        PdfParseResult pdfResult = pdfResult();
+        LhImportDedupeDecision listDecision = decision(LhImportDecisionType.NEW, false, true, false);
+        LhImportDedupeDecision changedDecision = decision(LhImportDecisionType.CHANGED_REPARSE, true, true, false);
+        given(dedupeDecisionService.decide(fixture.item(), null, null, false)).willReturn(listDecision);
+        given(dedupeDecisionService.decide(fixture.item(), fixture.detail(), fixture.pdfUrl(), false)).willReturn(changedDecision);
+        given(persistenceService.upsertLh(fixture.item())).willReturn(announcement);
+        given(pdfParsingService.parse(fixture.pdfUrl())).willReturn(pdfResult);
+        willThrow(new RuntimeException("address down"))
+                .given(addressEnrichmentService).enrichNotRequestedUnits(1L);
+
+        NoticeImportOrchestrator.ImportResult result = orchestrator.importLhNotices(1, 1);
+
+        assertThat(result.imported()).isEqualTo(1);
+        assertThat(result.failed()).isZero();
+        then(addressEnrichmentService).should().enrichNotRequestedUnits(1L);
+        then(geocodingEnrichmentService).should().enrichNotRequestedUnits(1L);
+        then(dedupeDecisionService).should().recordSuccess(announcement, changedDecision, objectMapper.writeValueAsString(pdfResult));
     }
 
     @Test

@@ -51,6 +51,44 @@ class AddressNormalizationServiceTest {
     }
 
     @Test
+    void normalizeUnitAddressUsesLegalDongAfterRegionLevel2InFullAddress() {
+        AnnouncementUnit unit = unit("경기도 김포시 마산동 1", "김포시");
+        LawdCodeMapping mapping = LawdCodeMapping.builder()
+                .regionLevel1("경기도")
+                .regionLevel2("김포시")
+                .legalDongName("마산동")
+                .legalDongCode("4157010900")
+                .build();
+        given(lawdCodeMappingRepository.findFirstByRegionLevel2AndLegalDongNameAndActiveTrue("김포시", "마산동"))
+                .willReturn(Optional.of(mapping));
+
+        service.normalizeUnitAddress(unit);
+
+        assertThat(unit.getNormalizedAddress()).isEqualTo("경기도 김포시 마산동 1");
+        assertThat(unit.getLegalDongCode()).isEqualTo("4157010900");
+        assertThat(unit.getLawdCd()).isEqualTo("41570");
+        assertThat(unit.getAddressStatus()).isEqualTo(AddressResolutionStatus.SUCCESS);
+    }
+
+    @Test
+    void normalizeUnitAddressInfersRegionWhenStoredRegionLooksLikeLegalDong() {
+        AnnouncementUnit unit = unit("김포시 마산동 1", "마산동");
+        LawdCodeMapping mapping = LawdCodeMapping.builder()
+                .regionLevel1("경기도")
+                .regionLevel2("김포시")
+                .legalDongName("마산동")
+                .legalDongCode("4157010900")
+                .build();
+        given(lawdCodeMappingRepository.findFirstByRegionLevel2AndLegalDongNameAndActiveTrue("김포시", "마산동"))
+                .willReturn(Optional.of(mapping));
+
+        service.normalizeUnitAddress(unit);
+
+        assertThat(unit.getLawdCd()).isEqualTo("41570");
+        assertThat(unit.getAddressStatus()).isEqualTo(AddressResolutionStatus.SUCCESS);
+    }
+
+    @Test
     void normalizeUnitAddressStoresNoLawdCodeWhenMappingMissing() {
         AnnouncementUnit unit = unit("김포시 마산동", null);
         given(lawdCodeMappingRepository.findFirstByRegionLevel2AndLegalDongNameAndActiveTrue("김포시", "마산동"))

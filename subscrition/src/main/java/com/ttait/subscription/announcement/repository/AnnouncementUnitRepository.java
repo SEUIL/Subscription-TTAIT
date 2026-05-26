@@ -2,6 +2,7 @@ package com.ttait.subscription.announcement.repository;
 
 import com.ttait.subscription.announcement.domain.AnnouncementUnit;
 import com.ttait.subscription.announcement.domain.AnnouncementUnitSource;
+import com.ttait.subscription.announcement.domain.AddressResolutionStatus;
 import com.ttait.subscription.announcement.domain.GeocodeStatus;
 import java.util.List;
 import java.util.Optional;
@@ -14,6 +15,10 @@ public interface AnnouncementUnitRepository extends JpaRepository<AnnouncementUn
     List<AnnouncementUnit> findByAnnouncementIdAndGeocodeStatusAndDeletedFalseOrderByUnitOrderAsc(
             Long announcementId,
             GeocodeStatus geocodeStatus);
+
+    List<AnnouncementUnit> findByAnnouncementIdAndAddressStatusAndDeletedFalseOrderByUnitOrderAsc(
+            Long announcementId,
+            AddressResolutionStatus addressStatus);
 
     List<AnnouncementUnit> findByAnnouncementIdInAndDeletedFalseOrderByAnnouncementIdAscUnitOrderAsc(List<Long> announcementIds);
 
