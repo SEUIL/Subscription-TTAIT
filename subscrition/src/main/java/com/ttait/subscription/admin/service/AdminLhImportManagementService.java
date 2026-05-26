@@ -52,11 +52,12 @@ public class AdminLhImportManagementService {
         JsonNode response = lhApiClient.fetchNoticeList(page, size);
         JsonNode dsList = findArray(response, "dsList");
         if (dsList == null || dsList.isEmpty()) {
-            return new LhCandidateCollectionResponse(0, 0, 0, List.of());
+            return new LhCandidateCollectionResponse(0, 0, 0, 0, List.of());
         }
 
         int scanned = 0;
         int skippedLand = 0;
+        int skippedCommercial = 0;
         List<LhImportCandidateResponse> candidates = new ArrayList<>();
         for (JsonNode item : dsList) {
             scanned++;
@@ -66,8 +67,9 @@ public class AdminLhImportManagementService {
             }
 
             boolean landNotice = isLandNotice(item);
+            boolean commercialNotice = isCommercialNotice(item);
             JsonNode detailResponse = null;
-            if (!landNotice) {
+            if (!landNotice && !commercialNotice) {
                 detailResponse = fetchDetail(item);
             }
 
@@ -75,6 +77,10 @@ public class AdminLhImportManagementService {
             if (scan.decision().decision() == LhImportDecisionType.LAND_SKIP) {
                 skippedLand++;
                 landNotice = true;
+            }
+            if (scan.decision().decision() == LhImportDecisionType.COMMERCIAL_SKIP) {
+                skippedCommercial++;
+                commercialNotice = true;
             }
 
             LhImportCandidate candidate = candidateRepository.findByPanId(panId)
@@ -88,9 +94,11 @@ public class AdminLhImportManagementService {
                     text(item, "DTL_URL"),
                     scan.pdfUrl(),
                     landNotice,
+                    commercialNotice,
                     scan.decision().announcementId() != null,
-                    !landNotice && scan.pdfUrl() != null && !scan.pdfUrl().isBlank(),
+                    !landNotice && !commercialNotice && scan.pdfUrl() != null && !scan.pdfUrl().isBlank(),
                     scan.decision().decision().name(),
+                    scan.decision().reason(),
                     writeJson(item),
                     writeJson(detailResponse),
                     canonicalJsonHasher.hash(item),
@@ -100,7 +108,7 @@ public class AdminLhImportManagementService {
             candidates.add(toResponse(saved));
         }
 
-        return new LhCandidateCollectionResponse(dsList.size(), scanned, skippedLand, candidates);
+        return new LhCandidateCollectionResponse(dsList.size(), scanned, skippedLand, skippedCommercial, candidates);
     }
 
     @Transactional(readOnly = true)
@@ -130,6 +138,12 @@ public class AdminLhImportManagementService {
         for (LhImportCandidate candidate : candidates) {
             if (candidate.isLandNotice()) {
                 counters.skippedLand++;
+                candidate.markSkipped();
+                candidateRepository.save(candidate);
+                continue;
+            }
+            if (candidate.isCommercialNotice()) {
+                counters.skippedCommercial++;
                 candidate.markSkipped();
                 candidateRepository.save(candidate);
                 continue;
@@ -179,9 +193,11 @@ public class AdminLhImportManagementService {
                 candidate.getSourceNoticeUrl(),
                 candidate.getPdfUrl(),
                 candidate.isLandNotice(),
+                candidate.isCommercialNotice(),
                 candidate.isAlreadyImported(),
                 candidate.isCanParse(),
-                candidate.getDedupeStatus()
+                candidate.getDedupeStatus(),
+                candidate.getSkipReason()
         );
     }
 
@@ -230,6 +246,14 @@ public class AdminLhImportManagementService {
         return "01".equals(text(item, "UPP_AIS_TP_CD"));
     }
 
+    private boolean isCommercialNotice(JsonNode item) {
+        String typeName = text(item, "AIS_TP_CD_NM");
+        if (typeName != null && typeName.contains("상가")) {
+            return true;
+        }
+        return "22".equals(text(item, "UPP_AIS_TP_CD")) && "24".equals(text(item, "AIS_TP_CD"));
+    }
+
     private String writeJson(JsonNode node) {
         if (node == null) {
             return null;
@@ -256,6 +280,7 @@ public class AdminLhImportManagementService {
         private final int fetched;
         private int scanned;
         private int skippedLand;
+        private int skippedCommercial;
         private int unchanged;
         private int geminiSkipped;
         private int imported;
@@ -269,6 +294,7 @@ public class AdminLhImportManagementService {
 
         private void add(NoticeImportOrchestrator.ImportResult result) {
             skippedLand += result.skippedLand();
+            skippedCommercial += result.skippedCommercial();
             unchanged += result.unchanged();
             geminiSkipped += result.geminiSkipped();
             imported += result.imported();
@@ -277,7 +303,8 @@ public class AdminLhImportManagementService {
         }
 
         private LhImportRunResult toResult() {
-            return new LhImportRunResult(fetched, scanned, skippedLand, unchanged, geminiSkipped, imported, reparsed, failed);
+            return new LhImportRunResult(fetched, scanned, skippedLand, skippedCommercial, unchanged, geminiSkipped,
+                    imported, reparsed, failed);
         }
     }
 }

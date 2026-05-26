@@ -53,6 +53,29 @@ class LhImportDedupeDecisionServiceTest {
     }
 
     @Test
+    void returnsCommercialSkipForCommercialNoticeName() throws Exception {
+        LhImportDedupeDecision decision = service.decide(
+                item("PAN-SHOP", "22", "24", "임대상가(추첨)"), null, null, false);
+
+        assertThat(decision.decision()).isEqualTo(LhImportDecisionType.COMMERCIAL_SKIP);
+        assertThat(decision.shouldFetchDetail()).isFalse();
+        assertThat(decision.shouldParseGemini()).isFalse();
+        assertThat(decision.shouldPersistOfficial()).isFalse();
+        assertThat(decision.preserveExistingParsedData()).isTrue();
+    }
+
+    @Test
+    void returnsCommercialSkipForCommercialCodePair() throws Exception {
+        LhImportDedupeDecision decision = service.decide(
+                item("PAN-SHOP", "22", "24", "기타"), null, null, false);
+
+        assertThat(decision.decision()).isEqualTo(LhImportDecisionType.COMMERCIAL_SKIP);
+        assertThat(decision.shouldFetchDetail()).isFalse();
+        assertThat(decision.shouldParseGemini()).isFalse();
+        assertThat(decision.shouldPersistOfficial()).isFalse();
+    }
+
+    @Test
     void returnsNewWhenNoExistingFingerprintExists() throws Exception {
         JsonNode item = item("PAN-001", "02", "국민임대");
         JsonNode detail = detail("서울", 1);
@@ -174,15 +197,22 @@ class LhImportDedupeDecisionServiceTest {
     }
 
     private JsonNode item(String panId, String upperSupplyTypeCode, String name) throws Exception {
+        return item(panId, upperSupplyTypeCode, "02", name);
+    }
+
+    private JsonNode item(String panId, String upperSupplyTypeCode, String supplyTypeCode, String name)
+            throws Exception {
         return objectMapper.readTree("""
                 {
                   "PAN_ID":"%s",
                   "UPP_AIS_TP_CD":"%s",
+                  "AIS_TP_CD":"%s",
+                  "AIS_TP_CD_NM":"%s",
                   "PAN_NM":"%s",
                   "CCR_CNNT_SYS_DS_CD":"03",
                   "SPL_INF_TP_CD":"050"
                 }
-                """.formatted(panId, upperSupplyTypeCode, name));
+                """.formatted(panId, upperSupplyTypeCode, supplyTypeCode, name, name));
     }
 
     private JsonNode detail(String region, int householdCount) throws Exception {

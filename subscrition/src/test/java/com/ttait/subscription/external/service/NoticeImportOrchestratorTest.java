@@ -113,6 +113,52 @@ class NoticeImportOrchestratorTest {
     }
 
     @Test
+    void legacyImportSkipsCommercialNoticeBeforeDetailFetch() throws Exception {
+        JsonNode listResponse = objectMapper.readTree("""
+                {
+                  "dsList": [
+                    {
+                      "PAN_ID":"PAN-SHOP",
+                      "UPP_AIS_TP_CD":"22",
+                      "AIS_TP_CD":"24",
+                      "AIS_TP_CD_NM":"임대상가(추첨)",
+                      "PAN_NM":"상가 공고",
+                      "CCR_CNNT_SYS_DS_CD":"03",
+                      "SPL_INF_TP_CD":"050"
+                    }
+                  ]
+                }
+                """);
+        JsonNode item = listResponse.get("dsList").get(0);
+        LhImportDedupeDecision commercialDecision = new LhImportDedupeDecision(
+                LhImportDecisionType.COMMERCIAL_SKIP,
+                LhImportDecisionType.COMMERCIAL_SKIP.name(),
+                false,
+                false,
+                false,
+                true,
+                null,
+                "PAN-SHOP",
+                "item-hash",
+                null,
+                null
+        );
+        given(lhApiClient.fetchNoticeList(1, 1)).willReturn(listResponse);
+        given(persistenceService.findArray(listResponse, "dsList")).willReturn(listResponse.get("dsList"));
+        given(dedupeDecisionService.decide(item, null, null, false)).willReturn(commercialDecision);
+
+        NoticeImportOrchestrator.ImportResult result = orchestrator.importLhNotices(1, 1);
+
+        assertThat(result.imported()).isZero();
+        assertThat(result.failed()).isZero();
+        assertThat(result.skippedLand()).isZero();
+        assertThat(result.skippedCommercial()).isEqualTo(1);
+        then(lhApiClient).should(never()).fetchNoticeDetail(anyString(), anyString(), anyString());
+        then(persistenceService).should(never()).upsertLh(any(JsonNode.class));
+        then(pdfParsingService).shouldHaveNoInteractions();
+    }
+
+    @Test
     void unchangedNoticeShortCircuitsBeforePdfParsingAndDetailPersistence() throws Exception {
         ImportFixture fixture = givenSingleNoticePage(false, true);
         LhImportDedupeDecision listDecision = decision(LhImportDecisionType.NEW, false, true, false);
