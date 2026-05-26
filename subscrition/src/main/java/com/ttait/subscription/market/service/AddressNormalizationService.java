@@ -50,17 +50,29 @@ public class AddressNormalizationService {
                 .filter(StringUtils::hasText)
                 .toArray(String[]::new);
         String inferredRegionLevel2 = inferRegionLevel2(tokens);
-        String regionLevel2 = normalizeToken(unit.getRegionLevel2());
+        String regionLevel2 = inferredRegionLevel2;
+        if (!StringUtils.hasText(regionLevel2)) {
+            regionLevel2 = normalizeToken(unit.getRegionLevel2());
+        }
         if (!StringUtils.hasText(regionLevel2) || !isRegionLevel2Token(regionLevel2)) {
             regionLevel2 = inferredRegionLevel2;
         }
-        String legalDongName = inferLegalDongName(tokens, regionLevel2);
+        String legalDongName = inferParenthesizedLegalDongName(normalizedAddress);
+        if (!StringUtils.hasText(legalDongName)) {
+            legalDongName = inferLegalDongName(tokens, regionLevel2);
+        }
         return new AddressTokens(regionLevel2, legalDongName);
     }
 
     private String inferRegionLevel2(String[] tokens) {
         if (tokens.length == 0) {
             return null;
+        }
+        if (tokens.length >= 3 && tokens[0].endsWith("도") && tokens[1].endsWith("시") && tokens[2].endsWith("구")) {
+            return tokens[2];
+        }
+        if (tokens.length >= 2 && tokens[0].endsWith("시") && tokens[1].endsWith("구")) {
+            return tokens[1];
         }
         if (tokens.length >= 2 && isProvinceLevelToken(tokens[0]) && isRegionLevel2Token(tokens[1])) {
             return tokens[1];
@@ -72,6 +84,16 @@ public class AddressNormalizationService {
             return tokens[1];
         }
         return null;
+    }
+
+    private String inferParenthesizedLegalDongName(String normalizedAddress) {
+        int startIndex = normalizedAddress.lastIndexOf('(');
+        int endIndex = normalizedAddress.lastIndexOf(')');
+        if (startIndex < 0 || endIndex <= startIndex) {
+            return null;
+        }
+        String candidate = normalizedAddress.substring(startIndex + 1, endIndex).trim();
+        return isLegalDongToken(candidate) ? candidate : null;
     }
 
     private String inferLegalDongName(String[] tokens, String regionLevel2) {
@@ -100,6 +122,11 @@ public class AddressNormalizationService {
     private boolean isRegionLevel2Token(String token) {
         return StringUtils.hasText(token)
                 && (token.endsWith("시") || token.endsWith("군") || token.endsWith("구"));
+    }
+
+    private boolean isLegalDongToken(String token) {
+        return StringUtils.hasText(token)
+                && (token.endsWith("동") || token.endsWith("읍") || token.endsWith("면") || token.endsWith("리"));
     }
 
     private void applyMapping(AnnouncementUnit unit,

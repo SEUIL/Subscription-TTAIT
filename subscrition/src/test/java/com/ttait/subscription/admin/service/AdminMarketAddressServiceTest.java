@@ -5,8 +5,11 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
+import static org.mockito.Mockito.times;
 
 import com.ttait.subscription.admin.dto.AddressNormalizationResponse;
+import com.ttait.subscription.admin.dto.LawdCodeMappingSeedRequest;
+import com.ttait.subscription.admin.dto.LawdCodeMappingSeedResponse;
 import com.ttait.subscription.admin.dto.LawdCodeMappingUpsertRequest;
 import com.ttait.subscription.admin.dto.LawdCodeMappingUpsertResponse;
 import com.ttait.subscription.common.exception.ApiException;
@@ -73,6 +76,31 @@ class AdminMarketAddressServiceTest {
         assertThatThrownBy(() -> service.upsertLawdCodeMappings(request))
                 .isInstanceOf(ApiException.class)
                 .hasMessage("legalDongCode must be 10 digits");
+    }
+
+
+    @Test
+    void importLawdCodeMappingsParsesPublicTabSeparatedSeed() {
+        given(lawdCodeMappingRepository.findFirstByRegionLevel2AndLegalDongNameAndLegalDongCode(
+                "부평구", "부평동", "2823710100"))
+                .willReturn(Optional.empty());
+        given(lawdCodeMappingRepository.findFirstByRegionLevel2AndLegalDongNameAndLegalDongCode(
+                "영통구", "이의동", "4111710300"))
+                .willReturn(Optional.empty());
+
+        LawdCodeMappingSeedResponse response = service.importLawdCodeMappings(new LawdCodeMappingSeedRequest("""
+                법정동코드	법정동명	폐지여부
+                2823700000	인천광역시 부평구	존재
+                2823710100	인천광역시 부평구 부평동	존재
+                4111710300	경기도 수원시 영통구 이의동	존재
+                1111010100	서울특별시 종로구 청운동	폐지
+                """, "tab", true));
+
+        assertThat(response.dataLineCount()).isEqualTo(4);
+        assertThat(response.parsedCount()).isEqualTo(2);
+        assertThat(response.skippedCount()).isEqualTo(2);
+        assertThat(response.insertedCount()).isEqualTo(2);
+        then(lawdCodeMappingRepository).should(times(2)).save(any(LawdCodeMapping.class));
     }
 
     @Test

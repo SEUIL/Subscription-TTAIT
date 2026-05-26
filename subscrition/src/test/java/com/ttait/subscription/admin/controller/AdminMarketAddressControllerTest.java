@@ -12,6 +12,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ttait.subscription.admin.dto.AddressNormalizationRequest;
 import com.ttait.subscription.admin.dto.AddressNormalizationResponse;
+import com.ttait.subscription.admin.dto.LawdCodeMappingSeedResponse;
 import com.ttait.subscription.admin.dto.LawdCodeMappingUpsertRequest;
 import com.ttait.subscription.admin.dto.LawdCodeMappingUpsertResponse;
 import com.ttait.subscription.admin.service.AdminMarketAddressService;
@@ -66,6 +67,30 @@ class AdminMarketAddressControllerTest {
         ArgumentCaptor<LawdCodeMappingUpsertRequest> request = ArgumentCaptor.forClass(LawdCodeMappingUpsertRequest.class);
         then(addressService).should().upsertLawdCodeMappings(request.capture());
         assertThat(request.getValue().mappings()).hasSize(1);
+    }
+
+
+    @Test
+    void importLawdCodeMappingsReturnsSeedSummary() throws Exception {
+        given(addressService.importLawdCodeMappings(any()))
+                .willReturn(new LawdCodeMappingSeedResponse(2, 1, 1, 1, 0));
+
+        mockMvc.perform(post("/api/admin/market/address/lawd-code-mappings/import")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "delimiter": "tab",
+                                  "activeOnly": true,
+                                  "content": "법정동코드\\t법정동명\\t폐지여부\\n2823710100\\t인천광역시 부평구 부평동\\t존재"
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.dataLineCount").value(2))
+                .andExpect(jsonPath("$.parsedCount").value(1))
+                .andExpect(jsonPath("$.skippedCount").value(1))
+                .andExpect(jsonPath("$.insertedCount").value(1));
+
+        then(addressService).should().importLawdCodeMappings(any());
     }
 
     @Test

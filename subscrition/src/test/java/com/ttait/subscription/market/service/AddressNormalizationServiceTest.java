@@ -88,6 +88,46 @@ class AddressNormalizationServiceTest {
         assertThat(unit.getAddressStatus()).isEqualTo(AddressResolutionStatus.SUCCESS);
     }
 
+
+    @Test
+    void normalizeUnitAddressPrefersDistrictWhenCityAndDistrictAreBothPresent() {
+        AnnouncementUnit unit = unit("경기도 수원시 영통구 이의동 1", "수원시");
+        LawdCodeMapping mapping = LawdCodeMapping.builder()
+                .regionLevel1("경기도")
+                .regionLevel2("영통구")
+                .legalDongName("이의동")
+                .legalDongCode("4111710300")
+                .build();
+        given(lawdCodeMappingRepository.findFirstByRegionLevel2AndLegalDongNameAndActiveTrue("영통구", "이의동"))
+                .willReturn(Optional.of(mapping));
+
+        service.normalizeUnitAddress(unit);
+
+        assertThat(unit.getLegalDongCode()).isEqualTo("4111710300");
+        assertThat(unit.getLawdCd()).isEqualTo("41117");
+        assertThat(unit.getAddressStatus()).isEqualTo(AddressResolutionStatus.SUCCESS);
+    }
+
+
+    @Test
+    void normalizeUnitAddressUsesParenthesizedLegalDongForRoadAddress() {
+        AnnouncementUnit unit = unit("인천광역시 남동구 은봉로 297(논현동)", "남동구");
+        LawdCodeMapping mapping = LawdCodeMapping.builder()
+                .regionLevel1("인천광역시")
+                .regionLevel2("남동구")
+                .legalDongName("논현동")
+                .legalDongCode("2820011000")
+                .build();
+        given(lawdCodeMappingRepository.findFirstByRegionLevel2AndLegalDongNameAndActiveTrue("남동구", "논현동"))
+                .willReturn(Optional.of(mapping));
+
+        service.normalizeUnitAddress(unit);
+
+        assertThat(unit.getLegalDongCode()).isEqualTo("2820011000");
+        assertThat(unit.getLawdCd()).isEqualTo("28200");
+        assertThat(unit.getAddressStatus()).isEqualTo(AddressResolutionStatus.SUCCESS);
+    }
+
     @Test
     void normalizeUnitAddressStoresNoLawdCodeWhenMappingMissing() {
         AnnouncementUnit unit = unit("김포시 마산동", null);
