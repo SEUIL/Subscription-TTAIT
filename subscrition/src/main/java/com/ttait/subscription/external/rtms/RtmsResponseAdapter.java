@@ -27,7 +27,7 @@ public class RtmsResponseAdapter {
                     .parse(new ByteArrayInputStream(xml.getBytes(StandardCharsets.UTF_8)));
             String resultCode = text(document.getDocumentElement(), "resultCode");
             String resultMessage = text(document.getDocumentElement(), "resultMsg");
-            if (StringUtils.hasText(resultCode) && !"00".equals(resultCode)) {
+            if (StringUtils.hasText(resultCode) && !isSuccessResultCode(resultCode)) {
                 return RtmsApiResult.failed(resultMessage == null ? "RTMS API error" : resultMessage);
             }
 
@@ -45,6 +45,10 @@ public class RtmsResponseAdapter {
         } catch (Exception exception) {
             return RtmsApiResult.failed("RTMS response parse failed");
         }
+    }
+
+    private boolean isSuccessResultCode(String resultCode) {
+        return "00".equals(resultCode) || "000".equals(resultCode);
     }
 
     private DocumentBuilderFactory documentBuilderFactory() throws ParserConfigurationException {
