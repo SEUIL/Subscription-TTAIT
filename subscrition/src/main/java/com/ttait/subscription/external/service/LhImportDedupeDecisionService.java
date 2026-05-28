@@ -38,6 +38,12 @@ public class LhImportDedupeDecisionService {
                     false, false, false, true, null, panId, itemHash, detailHash, pdfUrl);
         }
 
+        if (isCommercialNotice(item)) {
+            return decision(LhImportDecisionType.COMMERCIAL_SKIP,
+                    "LH commercial/shop notice is outside housing import scope",
+                    false, false, false, true, null, panId, itemHash, detailHash, pdfUrl);
+        }
+
         Announcement announcement = findAnnouncement(panId);
         AnnouncementImportFingerprint fingerprint = announcement == null
                 ? null
@@ -145,6 +151,14 @@ public class LhImportDedupeDecisionService {
 
     private boolean isLandNotice(JsonNode item) {
         return "01".equals(text(item, "UPP_AIS_TP_CD"));
+    }
+
+    public boolean isCommercialNotice(JsonNode item) {
+        String typeName = text(item, "AIS_TP_CD_NM");
+        if (typeName != null && typeName.contains("상가")) {
+            return true;
+        }
+        return "22".equals(text(item, "UPP_AIS_TP_CD")) && "24".equals(text(item, "AIS_TP_CD"));
     }
 
     private String text(JsonNode node, String fieldName) {

@@ -28,21 +28,27 @@ public class NoticeImportOrchestrator {
     private final NoticeImportPersistenceService persistenceService;
     private final PdfParsingService pdfParsingService;
     private final LhImportDedupeDecisionService dedupeDecisionService;
+    private final AnnouncementUnitAddressEnrichmentService addressEnrichmentService;
+    private final AnnouncementUnitGeocodingEnrichmentService geocodingEnrichmentService;
     private final ObjectMapper objectMapper;
     private final AnnouncementRepository announcementRepository;
     private final AnnouncementParseRawRepository announcementParseRawRepository;
 
     public NoticeImportOrchestrator(LhApiClient lhApiClient,
-                                     NoticeImportPersistenceService persistenceService,
-                                     PdfParsingService pdfParsingService,
-                                     LhImportDedupeDecisionService dedupeDecisionService,
-                                     ObjectMapper objectMapper,
-                                     AnnouncementRepository announcementRepository,
-                                     AnnouncementParseRawRepository announcementParseRawRepository) {
+                                      NoticeImportPersistenceService persistenceService,
+                                      PdfParsingService pdfParsingService,
+                                      LhImportDedupeDecisionService dedupeDecisionService,
+                                      AnnouncementUnitAddressEnrichmentService addressEnrichmentService,
+                                      AnnouncementUnitGeocodingEnrichmentService geocodingEnrichmentService,
+                                      ObjectMapper objectMapper,
+                                      AnnouncementRepository announcementRepository,
+                                      AnnouncementParseRawRepository announcementParseRawRepository) {
         this.lhApiClient = lhApiClient;
         this.persistenceService = persistenceService;
         this.pdfParsingService = pdfParsingService;
         this.dedupeDecisionService = dedupeDecisionService;
+        this.addressEnrichmentService = addressEnrichmentService;
+        this.geocodingEnrichmentService = geocodingEnrichmentService;
         this.objectMapper = objectMapper;
         this.announcementRepository = announcementRepository;
         this.announcementParseRawRepository = announcementParseRawRepository;
@@ -54,6 +60,7 @@ public class NoticeImportOrchestrator {
             @JsonIgnore int fetched,
             @JsonIgnore int scanned,
             @JsonIgnore int skippedLand,
+            @JsonIgnore int skippedCommercial,
             @JsonIgnore int unchanged,
             @JsonIgnore int geminiSkipped,
             @JsonIgnore int reparsed,
@@ -61,7 +68,19 @@ public class NoticeImportOrchestrator {
     ) {
 
         public ImportResult(int imported, int failed) {
-            this(imported, failed, 0, 0, 0, 0, 0, 0, false);
+            this(imported, failed, 0, 0, 0, 0, 0, 0, 0, false);
+        }
+
+        public ImportResult(int imported,
+                            int failed,
+                            int fetched,
+                            int scanned,
+                            int skippedLand,
+                            int unchanged,
+                            int geminiSkipped,
+                            int reparsed,
+                            boolean endOfList) {
+            this(imported, failed, fetched, scanned, skippedLand, 0, unchanged, geminiSkipped, reparsed, endOfList);
         }
     }
 
@@ -102,13 +121,14 @@ public class NoticeImportOrchestrator {
 
     public ImportResult importPreparedLhNotices(List<PreparedLhNotice> notices, boolean force) {
         if (notices == null || notices.isEmpty()) {
-            return new ImportResult(0, 0, 0, 0, 0, 0, 0, 0, false);
+            return new ImportResult(0, 0, 0, 0, 0, 0, 0, 0, 0, false);
         }
 
         ImportOptions options = new ImportOptions(force ? ImportMode.FORCE_ADMIN : ImportMode.SELECTED_ADMIN, force);
         AtomicInteger imported = new AtomicInteger(0);
         AtomicInteger failed = new AtomicInteger(0);
         AtomicInteger skippedLand = new AtomicInteger(0);
+        AtomicInteger skippedCommercial = new AtomicInteger(0);
         AtomicInteger unchanged = new AtomicInteger(0);
         AtomicInteger geminiSkipped = new AtomicInteger(0);
         AtomicInteger reparsed = new AtomicInteger(0);
@@ -118,6 +138,10 @@ public class NoticeImportOrchestrator {
                 CandidateScanResult scan = scanLhCandidate(notice.item(), notice.detailResponse(), force);
                 if (scan.decision().decision() == LhImportDecisionType.LAND_SKIP) {
                     skippedLand.incrementAndGet();
+                    continue;
+                }
+                if (scan.decision().decision() == LhImportDecisionType.COMMERCIAL_SKIP) {
+                    skippedCommercial.incrementAndGet();
                     continue;
                 }
 
@@ -148,6 +172,7 @@ public class NoticeImportOrchestrator {
                 scanned,
                 scanned,
                 skippedLand.get(),
+                skippedCommercial.get(),
                 unchanged.get(),
                 geminiSkipped.get(),
                 reparsed.get(),
@@ -166,6 +191,7 @@ public class NoticeImportOrchestrator {
         AtomicInteger failed = new AtomicInteger(0);
         AtomicInteger scanned = new AtomicInteger(0);
         AtomicInteger skippedLand = new AtomicInteger(0);
+        AtomicInteger skippedCommercial = new AtomicInteger(0);
         AtomicInteger unchanged = new AtomicInteger(0);
         AtomicInteger geminiSkipped = new AtomicInteger(0);
         AtomicInteger reparsed = new AtomicInteger(0);
@@ -176,20 +202,26 @@ public class NoticeImportOrchestrator {
 
             if (dsList == null) {
                 log.warn("LH API returned empty dsList for page={}", page);
-                return new ImportResult(0, 0, 0, 0, 0, 0, 0, 0, true);
+                return new ImportResult(0, 0, 0, 0, 0, 0, 0, 0, 0, true);
             }
 
             if (dsList.isEmpty()) {
-                return new ImportResult(0, 0, 0, 0, 0, 0, 0, 0, true);
+                return new ImportResult(0, 0, 0, 0, 0, 0, 0, 0, 0, true);
             }
 
             for (JsonNode item : dsList) {
                 scanned.incrementAndGet();
-                LhImportDedupeDecision landDecision = dedupeDecisionService.decide(item, null, null, options.force());
-                if (landDecision.decision() == LhImportDecisionType.LAND_SKIP) {
+                LhImportDedupeDecision skipDecision = dedupeDecisionService.decide(item, null, null, options.force());
+                if (skipDecision.decision() == LhImportDecisionType.LAND_SKIP) {
                     skippedLand.incrementAndGet();
                     log.debug("Skipping LH notice panId={} decision={} reason={}",
-                            landDecision.panId(), landDecision.decision(), landDecision.reason());
+                            skipDecision.panId(), skipDecision.decision(), skipDecision.reason());
+                    continue;
+                }
+                if (skipDecision.decision() == LhImportDecisionType.COMMERCIAL_SKIP) {
+                    skippedCommercial.incrementAndGet();
+                    log.debug("Skipping LH notice panId={} decision={} reason={}",
+                            skipDecision.panId(), skipDecision.decision(), skipDecision.reason());
                     continue;
                 }
                 try {
@@ -223,6 +255,7 @@ public class NoticeImportOrchestrator {
                 scanned.get(),
                 scanned.get(),
                 skippedLand.get(),
+                skippedCommercial.get(),
                 unchanged.get(),
                 geminiSkipped.get(),
                 reparsed.get(),
@@ -274,6 +307,7 @@ public class NoticeImportOrchestrator {
         }
 
         persistenceService.upsertLhDetail(panId, detailResponse, pdfResult, pdfRawJson);
+        enrichUnitsAfterImport(announcement);
         if (decision.shouldParseGemini() && pdfResult == null) {
             dedupeDecisionService.recordFailure(announcement, decision, "Gemini parse returned no result");
         } else {
@@ -370,10 +404,24 @@ public class NoticeImportOrchestrator {
         }
 
         persistenceService.upsertLhDetail(panId, detailResponse, pdfResult, pdfRawJson);
+        enrichUnitsAfterImport(announcement);
         if (decision.shouldParseGemini() && pdfResult == null) {
             dedupeDecisionService.recordFailure(announcement, decision, "Gemini parse returned no result");
         } else {
             dedupeDecisionService.recordSuccess(announcement, decision, pdfRawJson);
+        }
+    }
+
+    private void enrichUnitsAfterImport(Announcement announcement) {
+        try {
+            addressEnrichmentService.enrichNotRequestedUnits(announcement.getId());
+        } catch (RuntimeException e) {
+            log.warn("Post-import address enrichment failed announcementId={}", announcement.getId(), e);
+        }
+        try {
+            geocodingEnrichmentService.enrichNotRequestedUnits(announcement.getId());
+        } catch (RuntimeException e) {
+            log.warn("Post-import geocoding enrichment failed announcementId={}", announcement.getId(), e);
         }
     }
 

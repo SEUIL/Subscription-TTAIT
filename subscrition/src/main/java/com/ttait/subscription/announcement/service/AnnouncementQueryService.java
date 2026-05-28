@@ -1,7 +1,6 @@
 package com.ttait.subscription.announcement.service;
 
 import com.ttait.subscription.announcement.domain.Announcement;
-import com.ttait.subscription.announcement.domain.AnnouncementCategory;
 import com.ttait.subscription.announcement.domain.AnnouncementDetail;
 import com.ttait.subscription.announcement.domain.AnnouncementStatus;
 import com.ttait.subscription.announcement.domain.ParseReviewStatus;
@@ -14,21 +13,14 @@ import com.ttait.subscription.announcement.dto.FilterOptionResponse;
 import com.ttait.subscription.announcement.repository.AnnouncementCategoryRepository;
 import com.ttait.subscription.announcement.repository.AnnouncementDetailRepository;
 import com.ttait.subscription.announcement.repository.AnnouncementRepository;
+import com.ttait.subscription.announcement.repository.AnnouncementSearchCondition;
 import com.ttait.subscription.announcement.repository.AnnouncementUnitRepository;
 import com.ttait.subscription.common.exception.ApiException;
 import com.ttait.subscription.external.support.AnnouncementNormalizer;
 import com.ttait.subscription.user.domain.enums.CategoryCode;
-import java.util.Collection;
-import java.util.Comparator;
-import java.util.EnumSet;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -75,39 +67,25 @@ public class AnnouncementQueryService {
                                                                Long maxMonthlyRent,
                                                                List<CategoryCode> categories,
                                                                Pageable pageable) {
-        List<Announcement> announcements = announcementRepository.findPublicVisible(
-                        PUBLIC_VISIBLE_REVIEW_STATUSES,
-                        Pageable.unpaged())
-                .getContent();
-        Map<Long, Set<CategoryCode>> categoryMap = loadCategoryMap(extractIds(announcements));
-        List<Announcement> filtered = announcements.stream()
-                .filter(announcement -> matchesRegionLevel1(announcement, regionLevel1))
-                .filter(announcement -> matchesRegionLevel2(announcement, regionLevel2))
-                .filter(announcement -> matchesSupplyType(announcement, supplyType))
-                .filter(announcement -> matchesHouseType(announcement, houseType))
-                .filter(announcement -> matchesProvider(announcement, provider))
-                .filter(announcement -> matchesStatus(announcement, status))
-                .filter(announcement -> matchesKeyword(announcement, keyword))
-                .filter(announcement -> matchesDeposit(announcement, minDeposit, maxDeposit))
-                .filter(announcement -> matchesMonthlyRent(announcement, minMonthlyRent, maxMonthlyRent))
-                .filter(announcement -> matchesCategories(announcement, categories, categoryMap))
-                .sorted(Comparator
-                        .comparing(Announcement::getApplicationEndDate,
-                                Comparator.nullsLast(Comparator.naturalOrder()))
-                        .thenComparing(Announcement::getId, Comparator.reverseOrder()))
-                .toList();
+        AnnouncementStatus parsedStatus = parseStatus(status);
+        AnnouncementSearchCondition condition = new AnnouncementSearchCondition(
+                regionLevel1,
+                regionLevel2,
+                supplyType,
+                normalizeHouseTypeFilter(houseType),
+                provider,
+                parsedStatus,
+                keyword,
+                minDeposit,
+                maxDeposit,
+                minMonthlyRent,
+                maxMonthlyRent,
+                categories,
+                PUBLIC_VISIBLE_REVIEW_STATUSES
+        );
 
-        int start = (int) pageable.getOffset();
-        if (start >= filtered.size()) {
-            return new PageImpl<>(List.of(), pageable, filtered.size());
-        }
-
-        int end = Math.min(start + pageable.getPageSize(), filtered.size());
-        List<Announcement> pageAnnouncements = filtered.subList(start, end);
-        List<AnnouncementListItemResponse> content = pageAnnouncements.stream()
-                .map(this::toListItem)
-                .toList();
-        return new PageImpl<>(content, pageable, filtered.size());
+        return announcementRepository.searchPublicVisible(condition, pageable)
+                .map(this::toListItem);
     }
 
     public AnnouncementDetailResponse getAnnouncementDetail(Long announcementId) {
@@ -233,122 +211,20 @@ public class AnnouncementQueryService {
         );
     }
 
-    private List<Long> extractIds(List<Announcement> announcements) {
-        return announcements.stream().map(Announcement::getId).toList();
-    }
-
-    private Map<Long, Set<CategoryCode>> loadCategoryMap(Collection<Long> announcementIds) {
-        Map<Long, Set<CategoryCode>> categoryMap = new HashMap<>();
-        if (announcementIds.isEmpty()) {
-            return categoryMap;
-        }
-
-        for (AnnouncementCategory category : announcementCategoryRepository.findByAnnouncementIdIn(announcementIds)) {
-            categoryMap.computeIfAbsent(category.getAnnouncement().getId(), ignored -> EnumSet.noneOf(CategoryCode.class))
-                    .add(category.getCategoryCode());
-        }
-        return categoryMap;
-    }
-
-    private boolean matchesRegionLevel1(Announcement announcement, String regionLevel1) {
-        return !StringUtils.hasText(regionLevel1) || regionLevel1.equalsIgnoreCase(announcement.getRegionLevel1());
-    }
-
-    private boolean matchesRegionLevel2(Announcement announcement, String regionLevel2) {
-        if (!StringUtils.hasText(regionLevel2)) {
-            return true;
-        }
-
-        return Objects.equals(normalizeRegionToken(regionLevel2), normalizeRegionToken(resolveRegionLevel2(announcement)));
-    }
-
-    private boolean matchesSupplyType(Announcement announcement, String supplyType) {
-        return !StringUtils.hasText(supplyType) || supplyType.equalsIgnoreCase(announcement.getSupplyTypeNormalized());
-    }
-
-    private boolean matchesHouseType(Announcement announcement, String houseType) {
-        return !StringUtils.hasText(houseType) || houseType.equalsIgnoreCase(resolveHouseType(announcement));
-    }
-
-    private boolean matchesProvider(Announcement announcement, String provider) {
-        return !StringUtils.hasText(provider) || provider.equalsIgnoreCase(announcement.getProviderName());
-    }
-
-    private boolean matchesStatus(Announcement announcement, String status) {
+    private AnnouncementStatus parseStatus(String status) {
         if (!StringUtils.hasText(status)) {
-            return true;
+            return null;
         }
 
         try {
-            return announcement.getNoticeStatus() == AnnouncementStatus.valueOf(status.toUpperCase(Locale.ROOT));
+            return AnnouncementStatus.valueOf(status.toUpperCase(Locale.ROOT));
         } catch (IllegalArgumentException exception) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "invalid status: " + status);
         }
     }
 
-    private boolean matchesKeyword(Announcement announcement, String keyword) {
-        if (!StringUtils.hasText(keyword)) {
-            return true;
-        }
-
-        String lowerKeyword = keyword.toLowerCase(Locale.ROOT);
-        return containsValue(announcement.getNoticeName(), lowerKeyword)
-                || containsValue(announcement.getProviderName(), lowerKeyword)
-                || containsValue(announcement.getComplexName(), lowerKeyword)
-                || containsValue(announcement.getFullAddress(), lowerKeyword);
-    }
-
-    private boolean matchesDeposit(Announcement announcement, Long minDeposit, Long maxDeposit) {
-        Long depositAmount = announcement.getDepositAmount();
-        if (minDeposit != null && (depositAmount == null || depositAmount < minDeposit)) {
-            return false;
-        }
-        return maxDeposit == null || depositAmount == null || depositAmount <= maxDeposit;
-    }
-
-    private boolean matchesMonthlyRent(Announcement announcement, Long minMonthlyRent, Long maxMonthlyRent) {
-        Long monthlyRentAmount = announcement.getMonthlyRentAmount();
-        if (minMonthlyRent != null && (monthlyRentAmount == null || monthlyRentAmount < minMonthlyRent)) {
-            return false;
-        }
-        return maxMonthlyRent == null || monthlyRentAmount == null || monthlyRentAmount <= maxMonthlyRent;
-    }
-
-    private boolean matchesCategories(Announcement announcement, List<CategoryCode> categories,
-                                      Map<Long, Set<CategoryCode>> categoryMap) {
-        if (categories == null || categories.isEmpty()) {
-            return true;
-        }
-
-        Set<CategoryCode> storedCategories = categoryMap.get(announcement.getId());
-        if (storedCategories != null && !storedCategories.isEmpty()) {
-            return categories.stream().anyMatch(storedCategories::contains);
-        }
-
-        return categories.stream().anyMatch(category -> matchesCategoryByKeyword(announcement, category));
-    }
-
-    private boolean matchesCategoryByKeyword(Announcement announcement, CategoryCode category) {
-        String text = joinSearchText(announcement);
-        return switch (category) {
-            case YOUTH -> containsAny(text, "청년", "대학생", "청년매입");
-            case NEWLYWED -> containsAny(text, "신혼", "예비신혼", "혼인", "부부");
-            case HOMELESS -> containsAny(text, "무주택");
-            case ELDERLY -> containsAny(text, "고령자", "만 65세", "노인");
-            case LOW_INCOME -> containsAny(text, "저소득", "기초급여", "차상위");
-            case MULTI_CHILD -> containsAny(text, "다자녀");
-        };
-    }
-
-    private String joinSearchText(Announcement announcement) {
-        return String.join(" ",
-                safeLower(announcement.getNoticeName()),
-                safeLower(announcement.getSupplyTypeRaw()),
-                safeLower(announcement.getSupplyTypeNormalized()),
-                safeLower(announcement.getHouseTypeRaw()),
-                safeLower(resolveHouseType(announcement)),
-                safeLower(announcement.getProviderName()),
-                safeLower(announcement.getFullAddress()));
+    private String normalizeHouseTypeFilter(String houseType) {
+        return StringUtils.hasText(houseType) ? announcementNormalizer.normalizeHouseType(houseType) : houseType;
     }
 
     private String resolveHouseType(Announcement announcement) {
@@ -360,23 +236,6 @@ public class AnnouncementQueryService {
         }
 
         return StringUtils.hasText(announcement.getHouseTypeNormalized()) ? announcement.getHouseTypeNormalized() : null;
-    }
-
-    private boolean containsValue(String value, String keyword) {
-        return value != null && value.toLowerCase(Locale.ROOT).contains(keyword);
-    }
-
-    private String safeLower(String value) {
-        return value == null ? "" : value.toLowerCase(Locale.ROOT);
-    }
-
-    private boolean containsAny(String source, String... keywords) {
-        for (String keyword : keywords) {
-            if (source.contains(keyword.toLowerCase(Locale.ROOT))) {
-                return true;
-            }
-        }
-        return false;
     }
 
     private String resolveRegionLevel2(Announcement announcement) {

@@ -65,8 +65,10 @@ class LhImportCandidateRepositoryTest {
                     assertThat(found.getSourceNoticeUrl()).isEqualTo("https://example.com/notice");
                     assertThat(found.getPdfUrl()).isEqualTo("https://example.com/notice.pdf");
                     assertThat(found.isLandNotice()).isFalse();
+                    assertThat(found.isCommercialNotice()).isFalse();
                     assertThat(found.isAlreadyImported()).isTrue();
                     assertThat(found.isCanParse()).isTrue();
+                    assertThat(found.getSkipReason()).isNull();
                     assertThat(found.getListRawJson()).isEqualTo(listRawJson);
                     assertThat(found.getItemJson()).isEqualTo(listRawJson);
                     assertThat(found.getDetailRawJson()).isEqualTo(detailRawJson);

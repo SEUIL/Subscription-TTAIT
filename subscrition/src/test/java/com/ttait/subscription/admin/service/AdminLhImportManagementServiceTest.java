@@ -80,6 +80,7 @@ class AdminLhImportManagementServiceTest {
         assertThat(response.fetched()).isEqualTo(1);
         assertThat(response.scanned()).isEqualTo(1);
         assertThat(response.skippedLand()).isZero();
+        assertThat(response.skippedCommercial()).isZero();
         assertThat(response.candidates()).hasSize(1);
         assertThat(response.candidates().get(0).panId()).isEqualTo("PAN-001");
         assertThat(response.candidates().get(0).region()).isEqualTo("Seoul");
@@ -107,8 +108,40 @@ class AdminLhImportManagementServiceTest {
         LhCandidateCollectionResponse response = service.collectCandidates(1, 1);
 
         assertThat(response.skippedLand()).isEqualTo(1);
+        assertThat(response.skippedCommercial()).isZero();
         assertThat(response.candidates().get(0).status()).isEqualTo(LhImportCandidateStatus.SKIPPED.name());
         assertThat(response.candidates().get(0).isLandNotice()).isTrue();
+        assertThat(response.candidates().get(0).isCommercialNotice()).isFalse();
+        then(lhApiClient).should().fetchNoticeList(1, 1);
+        then(lhApiClient).shouldHaveNoMoreInteractions();
+    }
+
+    @Test
+    void collectCandidatesSkipsCommercialDetailFetchAndStoresSkippedCandidate() throws Exception {
+        JsonNode item = commercialItem("PAN-SHOP");
+        given(lhApiClient.fetchNoticeList(1, 1)).willReturn(list(item));
+        given(orchestrator.scanLhCandidate(item, null, false)).willReturn(scan(
+                LhImportDecisionType.COMMERCIAL_SKIP, null, null, false));
+        given(candidateRepository.findByPanId("PAN-SHOP")).willReturn(Optional.empty());
+        given(candidateRepository.save(any(LhImportCandidate.class))).willAnswer(invocation -> {
+            LhImportCandidate candidate = invocation.getArgument(0);
+            assertThat(candidate.isLandNotice()).isFalse();
+            assertThat(candidate.isCommercialNotice()).isTrue();
+            assertThat(candidate.getSkipReason()).isEqualTo(LhImportDecisionType.COMMERCIAL_SKIP.name());
+            assertThat(candidate.isCanParse()).isFalse();
+            assertThat(candidate.getDetailRawJson()).isNull();
+            ReflectionTestUtils.setField(candidate, "id", 12L);
+            return candidate;
+        });
+
+        LhCandidateCollectionResponse response = service.collectCandidates(1, 1);
+
+        assertThat(response.skippedLand()).isZero();
+        assertThat(response.skippedCommercial()).isEqualTo(1);
+        assertThat(response.candidates().get(0).status()).isEqualTo(LhImportCandidateStatus.SKIPPED.name());
+        assertThat(response.candidates().get(0).isLandNotice()).isFalse();
+        assertThat(response.candidates().get(0).isCommercialNotice()).isTrue();
+        assertThat(response.candidates().get(0).skipReason()).isEqualTo(LhImportDecisionType.COMMERCIAL_SKIP.name());
         then(lhApiClient).should().fetchNoticeList(1, 1);
         then(lhApiClient).shouldHaveNoMoreInteractions();
     }
@@ -158,6 +191,23 @@ class AdminLhImportManagementServiceTest {
                   "SPL_INF_TP_CD":"050"
                 }
                 """.formatted(panId, upperType, panId, panId));
+    }
+
+    private JsonNode commercialItem(String panId) throws Exception {
+        return objectMapper.readTree("""
+                {
+                  "PAN_ID":"%s",
+                  "UPP_AIS_TP_CD":"22",
+                  "AIS_TP_CD":"24",
+                  "AIS_TP_CD_NM":"임대상가(추첨)",
+                  "PAN_NM":"상가 공고 %s",
+                  "CNP_CD_NM":"Seoul",
+                  "DTL_URL":"https://example.com/%s",
+                  "PAN_SS":"OPEN_RAW",
+                  "CCR_CNNT_SYS_DS_CD":"03",
+                  "SPL_INF_TP_CD":"050"
+                }
+                """.formatted(panId, panId, panId));
     }
 
     private JsonNode detail(String pdfUrl) throws Exception {

@@ -58,6 +58,9 @@ public class LhImportCandidate extends BaseTimeEntity {
     @Column(name = "is_land_notice", nullable = false)
     private boolean landNotice;
 
+    @Column(name = "is_commercial_notice", nullable = false)
+    private boolean commercialNotice;
+
     @Column(name = "already_imported", nullable = false)
     private boolean alreadyImported;
 
@@ -66,6 +69,9 @@ public class LhImportCandidate extends BaseTimeEntity {
 
     @Column(name = "dedupe_status", length = 50)
     private String dedupeStatus;
+
+    @Column(name = "skip_reason", length = 500)
+    private String skipReason;
 
     @Column(name = "list_raw_json", columnDefinition = "TEXT")
     private String listRawJson;
@@ -98,14 +104,16 @@ public class LhImportCandidate extends BaseTimeEntity {
                                 String regionLevel1,
                                 String noticeStatusRaw,
                                 String sourceNoticeUrl,
-                                String pdfUrl,
-                                boolean landNotice,
-                                boolean alreadyImported,
-                                boolean canParse,
-                                String dedupeStatus,
-                                String listRawJson,
-                                String detailRawJson,
-                                String listHash,
+                                 String pdfUrl,
+                                 boolean landNotice,
+                                 boolean commercialNotice,
+                                 boolean alreadyImported,
+                                 boolean canParse,
+                                 String dedupeStatus,
+                                 String skipReason,
+                                 String listRawJson,
+                                 String detailRawJson,
+                                 String listHash,
                                 String detailHash) {
         this.ccrCnntSysDsCd = ccrCnntSysDsCd;
         this.splInfTpCd = splInfTpCd;
@@ -115,15 +123,53 @@ public class LhImportCandidate extends BaseTimeEntity {
         this.sourceNoticeUrl = sourceNoticeUrl;
         this.pdfUrl = pdfUrl;
         this.landNotice = landNotice;
+        this.commercialNotice = commercialNotice;
         this.alreadyImported = alreadyImported;
         this.canParse = canParse;
         this.dedupeStatus = dedupeStatus;
+        this.skipReason = skipReason;
         this.listRawJson = listRawJson;
         this.detailRawJson = detailRawJson;
         this.listHash = listHash;
         this.detailHash = detailHash;
-        this.status = landNotice ? LhImportCandidateStatus.SKIPPED : LhImportCandidateStatus.COLLECTED;
+        this.status = landNotice || commercialNotice ? LhImportCandidateStatus.SKIPPED : LhImportCandidateStatus.COLLECTED;
         this.collectedAt = LocalDateTime.now();
+    }
+
+    public void updateCollected(String ccrCnntSysDsCd,
+                                String splInfTpCd,
+                                String title,
+                                String regionLevel1,
+                                String noticeStatusRaw,
+                                String sourceNoticeUrl,
+                                String pdfUrl,
+                                boolean landNotice,
+                                boolean alreadyImported,
+                                boolean canParse,
+                                String dedupeStatus,
+                                String listRawJson,
+                                String detailRawJson,
+                                String listHash,
+                                String detailHash) {
+        updateCollected(ccrCnntSysDsCd, splInfTpCd, title, regionLevel1, noticeStatusRaw, sourceNoticeUrl, pdfUrl,
+                landNotice, false, alreadyImported, canParse, dedupeStatus, null, listRawJson, detailRawJson,
+                listHash, detailHash);
+    }
+
+    public void updateCollected(String title,
+                                String region,
+                                String sourceNoticeUrl,
+                                 String pdfUrl,
+                                 boolean landNotice,
+                                 boolean commercialNotice,
+                                 boolean alreadyImported,
+                                 boolean canParse,
+                                 String dedupeStatus,
+                                 String skipReason,
+                                 String itemJson,
+                                 String detailJson) {
+        updateCollected(null, null, title, region, null, sourceNoticeUrl, pdfUrl, landNotice, commercialNotice,
+                alreadyImported, canParse, dedupeStatus, skipReason, itemJson, detailJson, null, null);
     }
 
     public void updateCollected(String title,
@@ -136,8 +182,8 @@ public class LhImportCandidate extends BaseTimeEntity {
                                 String dedupeStatus,
                                 String itemJson,
                                 String detailJson) {
-        updateCollected(null, null, title, region, null, sourceNoticeUrl, pdfUrl, landNotice,
-                alreadyImported, canParse, dedupeStatus, itemJson, detailJson, null, null);
+        updateCollected(title, region, sourceNoticeUrl, pdfUrl, landNotice, false, alreadyImported, canParse,
+                dedupeStatus, null, itemJson, detailJson);
     }
 
     public String getRegion() {

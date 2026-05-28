@@ -38,9 +38,11 @@ class LhImportDtoJsonTest {
         assertThat(json.get("sourceNoticeUrl").asText()).isEqualTo("https://example.com/notice");
         assertThat(json.get("pdfUrl").asText()).isEqualTo("https://example.com/notice.pdf");
         assertThat(json.get("isLandNotice").asBoolean()).isFalse();
+        assertThat(json.get("isCommercialNotice").asBoolean()).isFalse();
         assertThat(json.get("alreadyImported").asBoolean()).isTrue();
         assertThat(json.get("canParse").asBoolean()).isTrue();
         assertThat(json.get("dedupeStatus").asText()).isEqualTo("UNCHANGED");
+        assertThat(json.get("skipReason").isNull()).isTrue();
     }
 
     @Test
@@ -88,6 +90,7 @@ class LhImportDtoJsonTest {
         assertThat(collection.get("fetched").asInt()).isEqualTo(10);
         assertThat(collection.get("scanned").asInt()).isEqualTo(8);
         assertThat(collection.get("skippedLand").asInt()).isEqualTo(2);
+        assertThat(collection.get("skippedCommercial").asInt()).isZero();
         assertThat(collection.get("candidates")).hasSize(1);
         assertThat(list.get("candidates")).hasSize(1);
         assertThat(list.get("totalCount").asLong()).isEqualTo(1L);
@@ -111,6 +114,7 @@ class LhImportDtoJsonTest {
         assertThat(json.get("fetched").asInt()).isEqualTo(10);
         assertThat(json.get("scanned").asInt()).isEqualTo(9);
         assertThat(json.get("skippedLand").asInt()).isEqualTo(1);
+        assertThat(json.get("skippedCommercial").asInt()).isZero();
         assertThat(json.get("unchanged").asInt()).isEqualTo(2);
         assertThat(json.get("geminiSkipped").asInt()).isEqualTo(2);
         assertThat(json.get("imported").asInt()).isEqualTo(4);

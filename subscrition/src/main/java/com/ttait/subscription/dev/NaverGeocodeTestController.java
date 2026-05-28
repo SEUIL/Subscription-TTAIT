@@ -1,7 +1,7 @@
 package com.ttait.subscription.dev;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import com.ttait.subscription.external.naver.NaverGeocodingClient;
+import com.ttait.subscription.external.naver.NaverGeocodingResult;
 import com.ttait.subscription.external.naver.NaverMapProperties;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Controller;
@@ -35,7 +35,7 @@ public class NaverGeocodeTestController {
 
     @ResponseBody
     @GetMapping("/api/dev/naver-geocode")
-    public JsonNode geocode(@RequestParam String query) {
+    public NaverGeocodingResult geocode(@RequestParam String query) {
         return naverGeocodingClient.geocode(query);
     }
 }

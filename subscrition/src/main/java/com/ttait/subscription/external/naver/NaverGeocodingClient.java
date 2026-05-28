@@ -2,6 +2,7 @@ package com.ttait.subscription.external.naver;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.ttait.subscription.common.exception.ApiException;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
@@ -13,19 +14,21 @@ public class NaverGeocodingClient {
 
     private final RestClient restClient;
     private final NaverMapProperties properties;
+    private final NaverGeocodingResponseAdapter responseAdapter = new NaverGeocodingResponseAdapter();
 
-    public NaverGeocodingClient(RestClient restClient, NaverMapProperties properties) {
+    public NaverGeocodingClient(@Qualifier("naverGeocodingRestClient") RestClient restClient,
+                                NaverMapProperties properties) {
         this.restClient = restClient;
         this.properties = properties;
     }
 
-    public JsonNode geocode(String query) {
+    public NaverGeocodingResult geocode(String query) {
         validateConfig();
         if (!StringUtils.hasText(query)) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "Address query is required");
         }
 
-        return restClient.get()
+        JsonNode response = restClient.get()
                 .uri(uriBuilder -> uriBuilder
                         .scheme("https")
                         .host("maps.apigw.ntruss.com")
@@ -37,6 +40,8 @@ public class NaverGeocodingClient {
                 .header(HttpHeaders.ACCEPT, "application/json")
                 .retrieve()
                 .body(JsonNode.class);
+
+        return responseAdapter.adapt(response);
     }
 
     private void validateConfig() {

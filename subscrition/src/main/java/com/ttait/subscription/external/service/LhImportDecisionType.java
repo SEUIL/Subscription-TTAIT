@@ -7,5 +7,6 @@ public enum LhImportDecisionType {
     FAILED_RETRY,
     FORCE_REPARSE,
     LAND_SKIP,
+    COMMERCIAL_SKIP,
     NO_PDF
 }

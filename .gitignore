@@ -5,6 +5,10 @@ Desktop.ini
 **/.idea/
 **/.vscode/
 **/*.iml
+**/.classpath
+**/.factorypath
+**/.project
+**/.settings/
 
 # Local environment files
 .env
@@ -16,6 +20,7 @@ Desktop.ini
 **/.gradle/
 **/build/
 **/out/
+subscrition/bin/
 !**/gradle/wrapper/gradle-wrapper.jar
 
 # JVM crash logs
@@ -39,3 +44,7 @@ subscrition/.claude/settings.local.json
 # AI agent/session state
 .sisyphus/
 AGENTS.md
+.omo/
+
+#playwright-mcp
+.playwright-mcp/
