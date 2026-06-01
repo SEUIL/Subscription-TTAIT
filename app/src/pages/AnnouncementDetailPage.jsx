@@ -52,6 +52,332 @@ const normalizeLocationUnit = (unit = {}) => ({
 
 const getLocationUnitKey = (unit, idx) => unit.unitId ?? `${unit.unitOrder ?? idx}-${unit.complexName ?? ''}-${unit.fullAddress ?? ''}`;
 
+const MARKET_STATUS_MESSAGES = {
+  INSUFFICIENT_DATA: '비교 가능한 주변 거래가 아직 충분하지 않습니다.',
+  SNAPSHOT_NOT_FOUND: '이 지역의 주변 시세 데이터를 준비 중입니다.',
+  UNIT_LAWD_CD_MISSING: '주소 기준 시세 비교를 준비 중입니다.',
+  UNIT_AREA_MISSING: '전용면적 정보가 없어 시세 비교가 어렵습니다.',
+  NOT_REQUESTED: '시세 비교를 준비 중입니다.',
+  FAILED: '시세 정보를 불러오지 못했습니다.',
+};
+
+const EMBEDDED_MARKET_STATUS_MAP = {
+  AVAILABLE: 'COMPARABLE',
+  NOT_REQUESTED: 'NOT_REQUESTED',
+  NO_DATA: 'SNAPSHOT_NOT_FOUND',
+  INSUFFICIENT_DATA: 'INSUFFICIENT_DATA',
+  FAILED: 'FAILED',
+};
+
+const MARKET_SOURCE_LABELS = {
+  APT_RENT: '아파트 전월세',
+  OFFICETEL_RENT: '오피스텔 전월세',
+  ROW_HOUSE_RENT: '연립/다세대 전월세',
+};
+
+const MARKET_METRIC_DEFINITIONS = [
+  { key: 'monthlyRentComparison', label: '월세', marketLabel: '주변 월세', unitLabel: '공고 월세', accent: '#ff385c' },
+  { key: 'depositComparison', label: '보증금', marketLabel: '주변 보증금', unitLabel: '공고 보증금', accent: '#1f8a70' },
+  { key: 'tradeComparison', label: '매매가', marketLabel: '주변 매매가', unitLabel: '공고 금액', accent: '#2f5f98' },
+];
+
+const resolveMarketSourceType = (unit = {}, announcement = {}) => {
+  const text = [
+    unit.houseType,
+    unit.supplyType,
+    unit.complexName,
+    unit.buildingType,
+    announcement.houseType,
+    announcement.supplyType,
+    announcement.complexName,
+  ].filter(Boolean).join(' ');
+
+  if (text.includes('오피스텔')) return 'OFFICETEL_RENT';
+  if (text.includes('연립') || text.includes('다세대') || text.includes('다가구')) return 'ROW_HOUSE_RENT';
+  return 'APT_RENT';
+};
+
+const formatDealYmLabel = (dealYm) => {
+  const value = String(dealYm || '');
+  if (!/^\d{6}$/.test(value)) return '';
+  return `${value.slice(0, 4)}년 ${Number(value.slice(4, 6))}월`;
+};
+
+const getMarketDealYmRange = (referenceDate = new Date()) => {
+  const currentYear = referenceDate.getFullYear();
+  const currentMonth = String(referenceDate.getMonth() + 1).padStart(2, '0');
+  const dealYmFrom = `${currentYear}01`;
+  const dealYmTo = `${currentYear}${currentMonth}`;
+
+  return {
+    dealYmFrom,
+    dealYmTo,
+    label: `${formatDealYmLabel(dealYmFrom)}~${formatDealYmLabel(dealYmTo)} 거래`,
+  };
+};
+
+const toFiniteNumber = (value) => {
+  if (value != null) {
+    const number = Number(value);
+    return Number.isFinite(number) ? number : null;
+  }
+  return null;
+};
+
+const formatMarketAmount = (value) => {
+  const number = toFiniteNumber(value);
+  return number != null ? `${formatPrice(number)} 만원` : '-';
+};
+
+const formatMarketRate = (value) => {
+  const number = toFiniteNumber(value);
+  if (number != null) {
+    const absolute = Math.abs(number);
+    const rounded = Math.abs(absolute - Math.round(absolute)) < 0.05 ? String(Math.round(absolute)) : absolute.toFixed(1);
+    return `${rounded}%`;
+  }
+  return '';
+};
+
+const clampMarketRatio = (value) => Math.max(0, Math.min(100, value));
+
+const normalizeMarketRatioPercent = (value) => {
+  const number = toFiniteNumber(value);
+  if (number != null) return number > 0 && number <= 2 ? number * 100 : number;
+  return null;
+};
+
+const getPreferredMarketRatio = (metric) => {
+  const preferredRatio = normalizeMarketRatioPercent(metric?.ratioPercent);
+  if (preferredRatio != null) return preferredRatio;
+
+  const unit = toFiniteNumber(metric?.unitAmount);
+  const market = toFiniteNumber(metric?.marketAmount);
+  if (unit != null && market != null) {
+    if (market <= 0) return unit <= 0 ? 0 : 100;
+    return (unit / market) * 100;
+  }
+  return null;
+};
+
+const getMarketRatio = (metric) => {
+  const ratio = getPreferredMarketRatio(metric);
+  return ratio != null ? clampMarketRatio(ratio) : null;
+};
+
+const normalizeMarketMetric = (metric) => {
+  if (!metric || typeof metric !== 'object') return null;
+  return {
+    unitAmount: metric.unitAmount,
+    marketAmount: metric.marketAmount,
+    differenceAmount: metric.differenceAmount,
+    differenceRatePercent: metric.differenceRatePercent,
+    ratioPercent: metric.ratioPercent,
+    discountRatePercent: metric.discountRatePercent,
+  };
+};
+
+const normalizeEmbeddedMarketStatus = (status) => EMBEDDED_MARKET_STATUS_MAP[status] || status;
+
+const hasEmbeddedMarketShape = (comparison) => (
+  comparison.marketDeposit != null ||
+  comparison.publicDeposit != null ||
+  comparison.marketMonthlyRent != null ||
+  comparison.publicMonthlyRent != null ||
+  comparison.depositRatio != null ||
+  comparison.monthlyRentRatio != null ||
+  comparison.depositDiscountRate != null ||
+  comparison.monthlyRentDiscountRate != null ||
+  comparison.sampleCount != null ||
+  comparison.sourceLabel != null ||
+  comparison.updatedAt != null ||
+  comparison.aggregatedAt != null ||
+  comparison.regionName != null ||
+  comparison.comparisonType != null ||
+  comparison.status === 'AVAILABLE' ||
+  comparison.status === 'NOT_REQUESTED' ||
+  comparison.status === 'NO_DATA' ||
+  comparison.status === 'FAILED'
+);
+
+const normalizeEmbeddedMarketMetric = ({ unitAmount, marketAmount, ratioPercent, discountRatePercent }) => {
+  const unit = toFiniteNumber(unitAmount);
+  const market = toFiniteNumber(marketAmount);
+
+  return normalizeMarketMetric({
+    unitAmount,
+    marketAmount,
+    differenceAmount: unit != null && market != null ? unit - market : null,
+    ratioPercent,
+    discountRatePercent,
+  });
+};
+
+const normalizeEmbeddedMarketComparison = (comparison) => ({
+  status: normalizeEmbeddedMarketStatus(comparison.status),
+  unitPrice: comparison.unitPrice ?? null,
+  sourceLabel: comparison.sourceLabel ?? comparison.snapshot?.sourceLabel ?? null,
+  regionName: comparison.regionName ?? comparison.snapshot?.regionName ?? null,
+  comparisonType: comparison.comparisonType ?? comparison.snapshot?.comparisonType ?? null,
+  snapshot: {
+    ...(comparison.snapshot || {}),
+    sampleCount: comparison.sampleCount ?? comparison.snapshot?.sampleCount,
+    updatedAt: comparison.updatedAt ?? comparison.snapshot?.updatedAt,
+    aggregatedAt: comparison.aggregatedAt ?? comparison.snapshot?.aggregatedAt,
+    sourceLabel: comparison.sourceLabel ?? comparison.snapshot?.sourceLabel,
+    regionName: comparison.regionName ?? comparison.snapshot?.regionName,
+    comparisonType: comparison.comparisonType ?? comparison.snapshot?.comparisonType,
+  },
+  depositComparison: normalizeEmbeddedMarketMetric({
+    unitAmount: comparison.publicDeposit,
+    marketAmount: comparison.marketDeposit,
+    ratioPercent: comparison.depositRatio,
+    discountRatePercent: comparison.depositDiscountRate,
+  }),
+  monthlyRentComparison: normalizeEmbeddedMarketMetric({
+    unitAmount: comparison.publicMonthlyRent,
+    marketAmount: comparison.marketMonthlyRent,
+    ratioPercent: comparison.monthlyRentRatio,
+    discountRatePercent: comparison.monthlyRentDiscountRate,
+  }),
+  tradeComparison: normalizeMarketMetric(comparison.tradeComparison),
+});
+
+const normalizeMarketComparison = (comparison) => {
+  if (!comparison || typeof comparison !== 'object') return null;
+  const hasCurrentMetricShape = comparison.depositComparison != null || comparison.monthlyRentComparison != null || comparison.tradeComparison != null;
+  if (hasEmbeddedMarketShape(comparison) && !hasCurrentMetricShape) return normalizeEmbeddedMarketComparison(comparison);
+
+  return {
+    status: comparison.status,
+    unitPrice: comparison.unitPrice ?? null,
+    snapshot: comparison.snapshot ?? null,
+    sourceLabel: comparison.sourceLabel ?? comparison.snapshot?.sourceLabel ?? null,
+    regionName: comparison.regionName ?? comparison.snapshot?.regionName ?? null,
+    comparisonType: comparison.comparisonType ?? comparison.snapshot?.comparisonType ?? null,
+    depositComparison: normalizeMarketMetric(comparison.depositComparison),
+    monthlyRentComparison: normalizeMarketMetric(comparison.monthlyRentComparison),
+    tradeComparison: normalizeMarketMetric(comparison.tradeComparison),
+  };
+};
+
+const isMarketMetricAvailable = (metric) => (
+  metric &&
+  metric.unitAmount != null &&
+  metric.marketAmount != null &&
+  toFiniteNumber(metric.unitAmount) != null &&
+  toFiniteNumber(metric.marketAmount) != null
+);
+
+const getAvailableMarketMetrics = (comparison) => MARKET_METRIC_DEFINITIONS
+  .map((definition) => ({ definition, metric: comparison?.[definition.key] }))
+  .filter(({ metric }) => isMarketMetricAvailable(metric));
+
+const getMarketDifferenceAmount = (metric) => {
+  const difference = toFiniteNumber(metric?.differenceAmount);
+  if (difference != null) return difference;
+
+  const unit = toFiniteNumber(metric?.unitAmount);
+  const market = toFiniteNumber(metric?.marketAmount);
+  if (unit != null && market != null) return unit - market;
+  return null;
+};
+
+const getMarketDifferenceRate = (metric) => {
+  const rate = toFiniteNumber(metric?.differenceRatePercent);
+  if (rate != null) return rate;
+
+  const difference = getMarketDifferenceAmount(metric);
+  const market = toFiniteNumber(metric?.marketAmount);
+  if (difference != null && market != null && market !== 0) return (difference / market) * 100;
+  return null;
+};
+
+const getMarketMetricInterpretation = (definition, metric) => {
+  const unit = toFiniteNumber(metric?.unitAmount);
+  const market = toFiniteNumber(metric?.marketAmount);
+  const difference = getMarketDifferenceAmount(metric);
+  const discountRate = toFiniteNumber(metric?.discountRatePercent);
+  const rate = difference != null && difference < 0 && discountRate != null ? discountRate : getMarketDifferenceRate(metric);
+  const rateText = rate != null ? ` (${formatMarketRate(rate)})` : '';
+
+  if (unit != null && market != null && difference != null) {
+    if (market === 0) {
+      if (unit === 0) return `공고 ${definition.label}가 주변 기준과 같은 수준입니다.`;
+      return `공고 ${definition.label}는 금액으로 직접 확인해 주세요.`;
+    }
+    if (difference < 0) return `공고 ${definition.label}가 주변 시세보다 ${formatMarketAmount(Math.abs(difference))}${rateText} 낮아요.`;
+    if (difference > 0) return `공고 ${definition.label}가 주변 시세보다 ${formatMarketAmount(difference)}${rateText} 높아요.`;
+    return `공고 ${definition.label}가 주변 시세와 같은 수준입니다.`;
+  }
+  return '금액 차이를 계산하기 어렵습니다.';
+};
+
+const getMarketStatusMessage = (status, hasMetrics) => {
+  if (status === 'COMPARABLE') return hasMetrics ? '' : '비교할 가격 정보가 부족합니다.';
+  return MARKET_STATUS_MESSAGES[status] || (hasMetrics ? '' : '비교할 가격 정보가 부족합니다.');
+};
+
+const getMarketSourceLabel = (sourceType) => MARKET_SOURCE_LABELS[sourceType] || MARKET_SOURCE_LABELS.APT_RENT;
+
+const getUserSafeMarketText = (value) => {
+  if (value != null) {
+    const text = String(value).trim();
+    if (!text) return '';
+    if (/^[A-Z0-9_]+$/.test(text)) return '';
+    if (/(api|backend|admin|developer|fallback|lawdCd|sourceType|unitId|snapshot|status|raw|개발|관리자)/i.test(text)) return '';
+    return text;
+  }
+  return '';
+};
+
+const getMarketUnitAreaLabel = (unit = {}) => unit.exclusiveAreaText || (unit.exclusiveAreaValue != null ? `${unit.exclusiveAreaValue}㎡` : '');
+
+const getMarketRegionLabel = (unit = {}, announcement = {}) => (
+  [unit.regionLevel1, unit.regionLevel2, unit.regionLevel3].filter(Boolean).join(' ') ||
+  [announcement.regionLevel1, announcement.regionLevel2].filter(Boolean).join(' ') ||
+  unit.fullAddress ||
+  announcement.fullAddress ||
+  ''
+);
+
+const getMarketSampleCount = (snapshot) => {
+  if (!snapshot || typeof snapshot !== 'object') return null;
+  const fields = ['sampleCount', 'totalSampleCount', 'dealCount', 'transactionCount', 'tradeCount', 'rentCount', 'count', 'totalCount'];
+
+  for (const field of fields) {
+    const number = toFiniteNumber(snapshot[field]);
+    if (number != null) return Math.max(0, Math.round(number));
+  }
+  return null;
+};
+
+const formatMarketDate = (value) => {
+  if (value != null) {
+    const text = String(value);
+    if (/^\d{6}$/.test(text)) return `${text.slice(0, 4)}.${text.slice(4, 6)}`;
+    if (/^\d{8}$/.test(text)) return `${text.slice(0, 4)}.${text.slice(4, 6)}.${text.slice(6, 8)}`;
+    if (/^\d{4}-\d{2}-\d{2}/.test(text)) return text.slice(0, 10).replace(/-/g, '.');
+
+    const date = new Date(text);
+    if (!Number.isNaN(date.getTime())) return `${date.getFullYear()}.${String(date.getMonth() + 1).padStart(2, '0')}.${String(date.getDate()).padStart(2, '0')}`;
+  }
+  return '';
+};
+
+const getMarketUpdatedLabel = (snapshot) => {
+  if (!snapshot || typeof snapshot !== 'object') return '';
+  return formatMarketDate(
+    snapshot.aggregatedAt ??
+    snapshot.updatedAt ??
+    snapshot.updatedDate ??
+    snapshot.baseDate ??
+    snapshot.baseYm ??
+    snapshot.dealYmTo ??
+    snapshot.createdAt
+  );
+};
+
 let naverMapsSdkPromise = null;
 
 const loadNaverMapsSdk = (clientId) => {
@@ -282,6 +608,195 @@ const LocationInfoSection = ({ sectionTitleStyle, announcementName, announcement
   );
 };
 
+const MarketUnitSelector = ({ units, selectedUnitId, onSelect }) => {
+  if (units.length <= 1) return null;
+
+  return (
+    <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 18 }}>
+      {units.map((unit, index) => {
+        const selected = String(unit.unitId) === String(selectedUnitId);
+        const title = unit.complexName || unit.houseType || `공급 단위 ${index + 1}`;
+        const subtitle = [getMarketUnitAreaLabel(unit), [unit.regionLevel1, unit.regionLevel2].filter(Boolean).join(' ')].filter(Boolean).join(' · ');
+
+        return (
+          <button
+            key={unit.unitId}
+            type="button"
+            onClick={() => onSelect(unit.unitId)}
+            style={{
+              flex: '1 1 190px', minWidth: 0, textAlign: 'left', padding: '13px 14px', borderRadius: 14,
+              border: selected ? '1px solid #ff385c' : '1px solid rgba(0,0,0,0.08)',
+              background: selected ? '#fff0f3' : '#fff', cursor: 'pointer', boxShadow: selected ? '0 10px 24px rgba(255,56,92,0.12)' : 'none',
+            }}
+          >
+            <span style={{ display: 'block', fontSize: 13, fontWeight: 800, color: selected ? '#ff385c' : '#222', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{title}</span>
+            <span style={{ display: 'block', marginTop: 5, fontSize: 12, color: '#6a6a6a', lineHeight: 1.35, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{subtitle || '단위별 시세 보기'}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
+};
+
+const MarketComparisonFallback = ({ message, onRetry }) => (
+  <div style={{
+    border: '1px dashed rgba(255,56,92,0.30)', borderRadius: 18, padding: 22, background: '#fff8f9',
+    display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16, flexWrap: 'wrap', minWidth: 0,
+  }}>
+    <div style={{ minWidth: 0 }}>
+      <p style={{ fontSize: 15, fontWeight: 800, color: '#222', marginBottom: 6 }}>{message}</p>
+      <p style={{ fontSize: 13, color: '#6a6a6a', lineHeight: 1.55 }}>공고 조건과 주변 거래를 맞춰 볼 수 있을 때 다시 안내해 드릴게요.</p>
+    </div>
+    {onRetry && (
+      <button
+        type="button"
+        onClick={onRetry}
+        style={{ padding: '10px 14px', borderRadius: 10, border: '1px solid #ff385c', background: '#fff', color: '#ff385c', fontSize: 13, fontWeight: 800, cursor: 'pointer', flexShrink: 0 }}
+      >
+        다시 불러오기
+      </button>
+    )}
+  </div>
+);
+
+const MarketSupportInfo = ({ items, style }) => {
+  if (items.length === 0) return null;
+
+  return (
+    <div style={{ borderRadius: 18, padding: 16, background: 'rgba(255,255,255,0.78)', border: '1px solid rgba(0,0,0,0.06)', minWidth: 0, ...style }}>
+      <div style={{ display: 'grid', gap: 10 }}>
+        {items.map(([label, value]) => (
+          <div key={label} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'flex-start', minWidth: 0 }}>
+            <span style={{ fontSize: 12, color: '#6a6a6a', flexShrink: 0 }}>{label}</span>
+            <strong style={{ fontSize: 12, color: '#222', textAlign: 'right', lineHeight: 1.45, minWidth: 0 }}>{value}</strong>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+const MarketMetricCard = ({ definition, metric }) => {
+  const ratio = getMarketRatio(metric);
+  const preferredRatio = getPreferredMarketRatio(metric);
+  const unit = toFiniteNumber(metric.unitAmount);
+  const market = toFiniteNumber(metric.marketAmount);
+  const isAboveMarket = preferredRatio != null ? preferredRatio > 100 : unit != null && market != null && market > 0 && unit > market;
+  const ratioLabel = ratio != null ? `${Math.round(ratio)}%${isAboveMarket ? ' 이상' : ''}` : '확인 중';
+
+  return (
+    <div style={{ border: '1px solid rgba(0,0,0,0.08)', borderRadius: 18, padding: 18, background: '#fff', minWidth: 0, boxShadow: 'rgba(0,0,0,0.025) 0px 8px 22px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, marginBottom: 14 }}>
+        <p style={{ fontSize: 15, fontWeight: 800, color: '#222' }}>{definition.label}</p>
+        <span style={{ width: 10, height: 10, borderRadius: 999, background: definition.accent, flexShrink: 0 }} />
+      </div>
+
+      <div style={{ display: 'grid', gap: 10, marginBottom: 16 }}>
+        {[
+          [definition.marketLabel, formatMarketAmount(metric.marketAmount), '#6a6a6a'],
+          [definition.unitLabel, formatMarketAmount(metric.unitAmount), '#222'],
+        ].map(([label, value, color]) => (
+          <div key={label} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'baseline', minWidth: 0 }}>
+            <span style={{ fontSize: 12, color: '#6a6a6a', flexShrink: 0 }}>{label}</span>
+            <strong style={{ fontSize: 16, color, textAlign: 'right', minWidth: 0 }}>{value}</strong>
+          </div>
+        ))}
+      </div>
+
+      <div style={{ marginBottom: 12 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, marginBottom: 7 }}>
+          <span style={{ fontSize: 12, color: '#6a6a6a' }}>공고/주변 비율</span>
+          <span style={{ fontSize: 12, fontWeight: 800, color: definition.accent }}>{ratioLabel}</span>
+        </div>
+        <div style={{ height: 9, borderRadius: 999, background: '#f2f2f2', overflow: 'hidden' }}>
+          <div style={{ width: `${ratio ?? 0}%`, height: '100%', borderRadius: 999, background: definition.accent, transition: 'width 0.25s ease' }} />
+        </div>
+      </div>
+
+      <p style={{ fontSize: 13, color: '#222', lineHeight: 1.6, fontWeight: 600 }}>{getMarketMetricInterpretation(definition, metric)}</p>
+    </div>
+  );
+};
+
+const MarketComparisonSection = ({ sectionTitleStyle, announcement, units, selectedUnitId, onSelectUnit, comparison, loading, error, onRetry, dealRange }) => {
+  const selectableUnits = units.filter((unit) => unit.unitId != null);
+  const selectedUnit = selectableUnits.find((unit) => String(unit.unitId) === String(selectedUnitId)) || selectableUnits[0] || null;
+  const normalizedComparison = normalizeMarketComparison(comparison);
+  const sourceType = selectedUnit ? resolveMarketSourceType(selectedUnit, announcement) : 'APT_RENT';
+  const sourceLabel = getMarketSourceLabel(sourceType);
+  const availableMetrics = getAvailableMarketMetrics(normalizedComparison);
+  const statusMessage = getMarketStatusMessage(normalizedComparison?.status, availableMetrics.length > 0);
+  const summaryMetric = availableMetrics[0];
+  const sampleCount = getMarketSampleCount(normalizedComparison?.snapshot);
+  const comparisonSourceLabel = getUserSafeMarketText(normalizedComparison?.sourceLabel || normalizedComparison?.snapshot?.sourceLabel) || sourceLabel;
+  const comparisonTypeLabel = getUserSafeMarketText(normalizedComparison?.comparisonType || normalizedComparison?.snapshot?.comparisonType);
+  const regionLabel = getUserSafeMarketText(normalizedComparison?.regionName || normalizedComparison?.snapshot?.regionName) || (selectedUnit ? getMarketRegionLabel(selectedUnit, announcement) : '');
+  const supportItems = [
+    ['기준 지역', regionLabel],
+    ['비교 기준', [comparisonSourceLabel, comparisonTypeLabel, dealRange.label].filter(Boolean).join(' · ')],
+    ['표본 수', normalizedComparison?.snapshot ? (sampleCount != null ? `${sampleCount}건` : '확인 중') : ''],
+    ['갱신일', getMarketUpdatedLabel(normalizedComparison?.snapshot)],
+  ].filter(([, value]) => value);
+
+  return (
+    <div style={{ marginBottom: 40 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: 16, marginBottom: 18, paddingBottom: 12, borderBottom: '1px solid rgba(0,0,0,0.08)', flexWrap: 'wrap' }}>
+        <div style={{ minWidth: 0 }}>
+          <h2 style={{ ...sectionTitleStyle, marginBottom: 6, paddingBottom: 0, borderBottom: 'none' }}>시세 비교</h2>
+          <p style={{ fontSize: 13, color: '#6a6a6a', lineHeight: 1.5 }}>선택한 공급 단위와 주변 거래 금액을 함께 비교해 보세요.</p>
+        </div>
+      </div>
+
+      {selectableUnits.length === 0 ? (
+        <MarketComparisonFallback message="공급 단위 정보가 없어 시세 비교를 준비하기 어렵습니다." />
+      ) : (
+        <div style={{ borderRadius: 22, padding: 20, background: 'linear-gradient(135deg, #fff 0%, #fff8f9 56%, #f7fbff 100%)', border: '1px solid rgba(0,0,0,0.08)', boxShadow: 'rgba(0,0,0,0.03) 0px 12px 30px', minWidth: 0 }}>
+          <MarketUnitSelector units={selectableUnits} selectedUnitId={selectedUnit?.unitId} onSelect={onSelectUnit} />
+
+          {loading && !normalizedComparison ? (
+            <div style={{ borderRadius: 18, padding: 22, background: '#fff', border: '1px solid rgba(0,0,0,0.06)' }}>
+              <p style={{ fontSize: 15, fontWeight: 800, color: '#222', marginBottom: 8 }}>시세 정보를 확인하고 있습니다.</p>
+              <div style={{ height: 10, borderRadius: 999, background: 'linear-gradient(90deg, #f2f2f2 0%, #fff0f3 50%, #f2f2f2 100%)' }} />
+            </div>
+          ) : error && !normalizedComparison ? (
+            <>
+              <MarketComparisonFallback message="시세 정보를 불러오지 못했습니다." onRetry={onRetry} />
+              <MarketSupportInfo items={supportItems} style={{ marginTop: 14 }} />
+            </>
+          ) : !normalizedComparison ? (
+            <>
+              <MarketComparisonFallback message="시세 정보를 준비 중입니다." />
+              <MarketSupportInfo items={supportItems} style={{ marginTop: 14 }} />
+            </>
+          ) : statusMessage ? (
+            <>
+              <MarketComparisonFallback message={statusMessage} />
+              <MarketSupportInfo items={supportItems} style={{ marginTop: 14 }} />
+            </>
+          ) : (
+            <>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16, alignItems: 'stretch', marginBottom: 16 }}>
+                <div style={{ borderRadius: 18, padding: 20, background: '#222', color: '#fff', minWidth: 0, overflow: 'hidden', position: 'relative' }}>
+                  <div style={{ position: 'absolute', right: -44, top: -54, width: 150, height: 150, borderRadius: '50%', background: 'rgba(255,56,92,0.32)' }} />
+                  <p style={{ fontSize: 12, fontWeight: 800, color: 'rgba(255,255,255,0.68)', marginBottom: 10 }}>한눈에 보기</p>
+                  <p style={{ position: 'relative', fontSize: 21, fontWeight: 800, lineHeight: 1.45, letterSpacing: '-0.4px' }}>{getMarketMetricInterpretation(summaryMetric.definition, summaryMetric.metric)}</p>
+                </div>
+                <MarketSupportInfo items={supportItems} />
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 14 }}>
+                {availableMetrics.map(({ definition, metric }) => (
+                  <MarketMetricCard key={definition.key} definition={definition} metric={metric} />
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+
 export default function AnnouncementDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -292,6 +807,12 @@ export default function AnnouncementDetailPage() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [favorited, setFavorited] = useState(false);
+  const [selectedMarketUnitId, setSelectedMarketUnitId] = useState(null);
+  const [marketComparisons, setMarketComparisons] = useState({});
+  const [marketLoadingByUnit, setMarketLoadingByUnit] = useState({});
+  const [marketErrorsByUnit, setMarketErrorsByUnit] = useState({});
+  const [marketRequestVersion, setMarketRequestVersion] = useState(0);
+  const marketDealRange = getMarketDealYmRange();
 
   useEffect(() => {
     const load = async () => {
@@ -314,6 +835,96 @@ export default function AnnouncementDetailPage() {
     };
     load();
   }, [id, isLoggedIn]);
+
+  useEffect(() => {
+    setSelectedMarketUnitId(null);
+    setMarketComparisons({});
+    setMarketLoadingByUnit({});
+    setMarketErrorsByUnit({});
+    setMarketRequestVersion(0);
+  }, [id]);
+
+  useEffect(() => {
+    const unitsWithId = (Array.isArray(data?.units) ? data.units : []).filter((unit) => unit.unitId != null);
+
+    setSelectedMarketUnitId((current) => {
+      if (unitsWithId.length === 0) return null;
+      if (current != null && unitsWithId.some((unit) => String(unit.unitId) === String(current))) return current;
+      return unitsWithId[0].unitId;
+    });
+  }, [data]);
+
+  useEffect(() => {
+    const hasSelectedMarketUnit = selectedMarketUnitId != null;
+    if (!data || !hasSelectedMarketUnit) return undefined;
+
+    const unitsWithId = (Array.isArray(data.units) ? data.units : []).filter((unit) => unit.unitId != null);
+    const selectedUnit = unitsWithId.find((unit) => String(unit.unitId) === String(selectedMarketUnitId));
+    if (!selectedUnit) return undefined;
+
+    const cacheKey = String(selectedUnit.unitId);
+    const cachedComparison = marketComparisons[cacheKey];
+    const isLoadingCurrentUnit = marketLoadingByUnit[cacheKey] === id;
+    const hasCurrentError = marketErrorsByUnit[cacheKey]?.announcementId === id;
+    if ((cachedComparison?.fetched && cachedComparison.announcementId === id) || isLoadingCurrentUnit || hasCurrentError) return undefined;
+
+    const fetchMarketComparison = async () => {
+      const sourceType = resolveMarketSourceType(selectedUnit, data);
+      const endpoint = `/api/announcements/${id}/units/${selectedUnit.unitId}/market-comparison?sourceType=${encodeURIComponent(sourceType)}&dealYmFrom=${marketDealRange.dealYmFrom}&dealYmTo=${marketDealRange.dealYmTo}`;
+
+      setMarketLoadingByUnit((prev) => ({ ...prev, [cacheKey]: id }));
+      setMarketErrorsByUnit((prev) => {
+        if (!prev[cacheKey]) return prev;
+        const next = { ...prev };
+        delete next[cacheKey];
+        return next;
+      });
+
+      try {
+        const response = await api.get(endpoint);
+        if (!response.ok) throw new Error('market comparison request failed');
+        const payload = await response.json();
+
+        setMarketComparisons((prev) => ({
+          ...prev,
+          [cacheKey]: {
+            fetched: true,
+            data: normalizeMarketComparison(payload),
+            dealRange: marketDealRange,
+            announcementId: id,
+          },
+        }));
+      } catch {
+        setMarketErrorsByUnit((prev) => ({ ...prev, [cacheKey]: { message: '시세 정보를 불러오지 못했습니다.', announcementId: id } }));
+      } finally {
+        setMarketLoadingByUnit((prev) => {
+          if (prev[cacheKey] !== id) return prev;
+          return { ...prev, [cacheKey]: false };
+        });
+      }
+    };
+
+    fetchMarketComparison();
+  }, [data, id, selectedMarketUnitId, marketRequestVersion, marketDealRange.dealYmFrom, marketDealRange.dealYmTo]);
+
+  const retryMarketComparison = () => {
+    if (!(selectedMarketUnitId != null)) return;
+    const cacheKey = String(selectedMarketUnitId);
+
+    setMarketComparisons((prev) => {
+      if (!prev[cacheKey]) return prev;
+      const next = { ...prev };
+      delete next[cacheKey];
+      return next;
+    });
+    setMarketErrorsByUnit((prev) => {
+      if (!prev[cacheKey]) return prev;
+      const next = { ...prev };
+      delete next[cacheKey];
+      return next;
+    });
+    setMarketRequestVersion((version) => version + 1);
+  };
 
   const toggleFavorite = async () => {
     if (!isLoggedIn) { navigate('/login'); return; }
@@ -346,6 +957,14 @@ export default function AnnouncementDetailPage() {
     return '-';
   };
   const units = Array.isArray(a.units) ? a.units : [];
+  const marketUnits = units.filter((unit) => unit.unitId != null);
+  const activeMarketUnit = marketUnits.find((unit) => String(unit.unitId) === String(selectedMarketUnitId)) || marketUnits[0] || null;
+  const activeMarketUnitId = activeMarketUnit?.unitId ?? selectedMarketUnitId;
+  const activeMarketKey = activeMarketUnitId != null ? String(activeMarketUnitId) : null;
+  const activeMarketCache = activeMarketKey && marketComparisons[activeMarketKey]?.announcementId === id ? marketComparisons[activeMarketKey] : null;
+  const activeMarketComparison = activeMarketCache?.data || activeMarketUnit?.marketComparison || null;
+  const activeMarketLoading = activeMarketKey ? marketLoadingByUnit[activeMarketKey] === id : false;
+  const activeMarketError = activeMarketKey && marketErrorsByUnit[activeMarketKey]?.announcementId === id ? marketErrorsByUnit[activeMarketKey].message : '';
 
   const infoItems = [
     ['공급기관', val(a.providerName)],
@@ -428,6 +1047,19 @@ export default function AnnouncementDetailPage() {
             announcementName={a.complexName || a.noticeName}
             announcementAddress={a.fullAddress}
             units={units}
+          />
+
+          <MarketComparisonSection
+            sectionTitleStyle={S.sectionTitle}
+            announcement={a}
+            units={units}
+            selectedUnitId={activeMarketUnitId}
+            onSelectUnit={setSelectedMarketUnitId}
+            comparison={activeMarketComparison}
+            loading={activeMarketLoading}
+            error={activeMarketError}
+            onRetry={retryMarketComparison}
+            dealRange={activeMarketCache?.dealRange || marketDealRange}
           />
 
           {/* Cost Info */}
