@@ -43,6 +43,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/dev/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/dev/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/announcements/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/config/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/filters/**").permitAll()
                         // CORS 프리플라이트 요청 허용
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
