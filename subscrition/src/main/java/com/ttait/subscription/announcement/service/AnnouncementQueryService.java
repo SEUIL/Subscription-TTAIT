@@ -16,6 +16,7 @@ import com.ttait.subscription.announcement.repository.AnnouncementRepository;
 import com.ttait.subscription.announcement.repository.AnnouncementSearchCondition;
 import com.ttait.subscription.announcement.repository.AnnouncementUnitRepository;
 import com.ttait.subscription.common.exception.ApiException;
+import com.ttait.subscription.external.service.AnnouncementUnitGeocodingEnrichmentService;
 import com.ttait.subscription.external.support.AnnouncementNormalizer;
 import com.ttait.subscription.user.domain.enums.CategoryCode;
 import java.util.List;
@@ -40,17 +41,20 @@ public class AnnouncementQueryService {
     private final AnnouncementDetailRepository announcementDetailRepository;
     private final AnnouncementCategoryRepository announcementCategoryRepository;
     private final AnnouncementUnitRepository announcementUnitRepository;
+    private final AnnouncementUnitGeocodingEnrichmentService announcementUnitGeocodingEnrichmentService;
     private final AnnouncementNormalizer announcementNormalizer;
 
     public AnnouncementQueryService(AnnouncementRepository announcementRepository,
                                       AnnouncementDetailRepository announcementDetailRepository,
                                       AnnouncementCategoryRepository announcementCategoryRepository,
                                       AnnouncementUnitRepository announcementUnitRepository,
+                                      AnnouncementUnitGeocodingEnrichmentService announcementUnitGeocodingEnrichmentService,
                                       AnnouncementNormalizer announcementNormalizer) {
         this.announcementRepository = announcementRepository;
         this.announcementDetailRepository = announcementDetailRepository;
         this.announcementCategoryRepository = announcementCategoryRepository;
         this.announcementUnitRepository = announcementUnitRepository;
+        this.announcementUnitGeocodingEnrichmentService = announcementUnitGeocodingEnrichmentService;
         this.announcementNormalizer = announcementNormalizer;
     }
 
@@ -88,6 +92,7 @@ public class AnnouncementQueryService {
                 .map(this::toListItem);
     }
 
+    @Transactional
     public AnnouncementDetailResponse getAnnouncementDetail(Long announcementId) {
         Announcement announcement = announcementRepository.findPublicVisibleById(
                         announcementId,
@@ -95,6 +100,7 @@ public class AnnouncementQueryService {
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "announcement not found"));
         AnnouncementDetail detail = announcementDetailRepository.findByAnnouncementIdAndDeletedFalse(announcementId)
                 .orElse(null);
+        announcementUnitGeocodingEnrichmentService.enrichNotRequestedUnits(announcementId);
         List<AnnouncementUnitResponse> units = announcementUnitRepository
                 .findByAnnouncementIdAndDeletedFalseOrderByUnitOrderAsc(announcementId)
                 .stream()
