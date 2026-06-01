@@ -38,6 +38,8 @@ CLAUDE.md
 # Local runtime logs
 subscrition/backend.err.log
 subscrition/backend.out.log
+tmux-client-*.log
+tmux-server-*.log
 frontend/.env.example
 subscrition/.claude/settings.local.json
 

@@ -20,4 +20,12 @@ public interface MarketTransactionRawRepository extends JpaRepository<MarketTran
             String dealYmTo,
             BigDecimal areaMin,
             BigDecimal areaMax);
+
+    long countBySourceTypeAndLawdCdAndDealYmBetweenAndExclusiveAreaBetween(
+            MarketSourceType sourceType,
+            String lawdCd,
+            String dealYmFrom,
+            String dealYmTo,
+            BigDecimal areaMin,
+            BigDecimal areaMax);
 }

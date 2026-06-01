@@ -1,0 +1,14 @@
+services:
+  mysql:
+    image: mysql:8.4
+    container_name: ttait-subscription-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
+      MYSQL_DATABASE: ttait_subscription
+    ports:
+      - "3306:3306"
+    volumes:
+      - ttait_subscription_mysql:/var/lib/mysql
+
+volumes:
+  ttait_subscription_mysql:

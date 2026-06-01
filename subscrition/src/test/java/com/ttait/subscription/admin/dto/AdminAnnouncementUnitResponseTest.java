@@ -18,6 +18,8 @@ class AdminAnnouncementUnitResponseTest {
     void adminResponseMapsGeocodeFieldsAndReviewOnlyMessage() {
         AnnouncementUnit unit = unit();
         LocalDateTime geocodedAt = LocalDateTime.of(2026, 5, 20, 11, 10);
+        LocalDateTime addressNormalizedAt = LocalDateTime.of(2026, 5, 20, 10, 30);
+        unit.markAddressResolved("경기도 수원시 테스트로 1", "4111110100", "41111", addressNormalizedAt);
         unit.markGeocodeFailed("API 오류", geocodedAt);
 
         AdminAnnouncementUnitResponse response = AdminAnnouncementUnitResponse.from(unit);
@@ -28,13 +30,18 @@ class AdminAnnouncementUnitResponseTest {
         assertThat(response.unitSource()).isEqualTo("MERGED");
         assertThat(response.matchSource()).isEqualTo("AI");
         assertThat(response.confidenceLevel()).isEqualTo("HIGH");
+        assertThat(response.legalDongCode()).isEqualTo("4111110100");
+        assertThat(response.lawdCd()).isEqualTo("41111");
+        assertThat(response.addressStatus()).isEqualTo("SUCCESS");
+        assertThat(response.addressMessage()).isNull();
+        assertThat(response.addressNormalizedAt()).isEqualTo(addressNormalizedAt);
         assertThat(response.latitude()).isNull();
         assertThat(response.longitude()).isNull();
         assertThat(response.geocodeStatus()).isEqualTo("FAILED");
         assertThat(response.geocodedAt()).isEqualTo(geocodedAt);
         assertThat(response.geocodeMessage()).isEqualTo("API 오류");
         assertThat(recordComponentNames(AdminAnnouncementUnitResponse.class))
-                .contains("geocodeMessage")
+                .contains("legalDongCode", "lawdCd", "addressStatus", "addressMessage", "addressNormalizedAt", "geocodeMessage")
                 .doesNotContain("rawNaverPayload", "naverPayload", "naverApiKey", "clientSecret");
     }
 
@@ -45,6 +52,11 @@ class AdminAnnouncementUnitResponseTest {
 
         AdminAnnouncementUnitResponse response = AdminAnnouncementUnitResponse.from(unit);
 
+        assertThat(response.legalDongCode()).isNull();
+        assertThat(response.lawdCd()).isNull();
+        assertThat(response.addressStatus()).isEqualTo("NOT_REQUESTED");
+        assertThat(response.addressMessage()).isNull();
+        assertThat(response.addressNormalizedAt()).isNull();
         assertThat(response.latitude()).isNull();
         assertThat(response.longitude()).isNull();
         assertThat(response.geocodeStatus()).isNull();
