@@ -1,8 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useApi } from '../hooks/useApi';
 import { useToast } from '../components/common/Toast';
 import LoadingSpinner from '../components/common/LoadingSpinner';
+import AdminMarketReadinessSection from '../components/admin/AdminMarketReadinessSection';
 
 const S = {
   container: { maxWidth: 1100, margin: '0 auto', padding: '32px 24px 80px' },
@@ -56,6 +57,19 @@ const MARITAL_OPTIONS = [
   { value: 'ENGAGED', label: 'ENGAGED (예비신혼)' },
   { value: 'NEWLYWED', label: 'NEWLYWED (신혼)' },
 ];
+
+const MARKET_SOURCE_TYPE = 'APT_RENT';
+
+function getMarketDealYmRange(today = new Date()) {
+  const lastCompletedMonth = new Date(today.getFullYear(), today.getMonth(), 0);
+  const rangeStartMonth = new Date(lastCompletedMonth.getFullYear(), lastCompletedMonth.getMonth() - 5, 1);
+  const formatDealYm = (date) => `${date.getFullYear()}${String(date.getMonth() + 1).padStart(2, '0')}`;
+
+  return {
+    dealYmFrom: formatDealYm(rangeStartMonth),
+    dealYmTo: formatDealYm(lastCompletedMonth),
+  };
+}
 
 function badgeStyle(kind, value) {
   if (kind === 'confidence') {
@@ -256,6 +270,12 @@ export default function AdminReviewDetailPage() {
   const [action, setAction] = useState('');
   const [memo, setMemo] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [marketDealYmRange] = useState(() => getMarketDealYmRange());
+  const [marketReadiness, setMarketReadiness] = useState(null);
+  const [marketReadinessLoading, setMarketReadinessLoading] = useState(false);
+  const [marketReadinessError, setMarketReadinessError] = useState('');
+  const [marketPreparing, setMarketPreparing] = useState(false);
+  const marketPreparingRef = useRef(false);
 
   const [corrections, setCorrections] = useState({
     depositAmount: '', monthlyRentAmount: '', supplyHouseholdCount: '',
@@ -263,6 +283,32 @@ export default function AdminReviewDetailPage() {
     homelessRequired: '', lowIncomeRequired: '', elderlyRequired: '',
     elderlyAgeMin: '', childrenMinCount: '',
   });
+
+  const fetchMarketReadiness = useCallback(async () => {
+    const params = new URLSearchParams({
+      sourceType: MARKET_SOURCE_TYPE,
+      dealYmFrom: marketDealYmRange.dealYmFrom,
+      dealYmTo: marketDealYmRange.dealYmTo,
+    });
+
+    setMarketReadinessLoading(true);
+    setMarketReadinessError('');
+    try {
+      const res = await api.get(`/api/admin/market/announcements/${id}/readiness?${params.toString()}`);
+      if (res.ok) {
+        setMarketReadiness(await res.json());
+      } else {
+        setMarketReadinessError('주변시세 준비 상태를 불러오지 못했습니다.');
+      }
+    } catch {
+      setMarketReadinessError('주변시세 준비 상태를 불러오지 못했습니다.');
+    }
+    setMarketReadinessLoading(false);
+  }, [api, id, marketDealYmRange.dealYmFrom, marketDealYmRange.dealYmTo]);
+
+  useEffect(() => {
+    fetchMarketReadiness();
+  }, [fetchMarketReadiness]);
 
   useEffect(() => {
     const load = async () => {
@@ -293,6 +339,65 @@ export default function AdminReviewDetailPage() {
   }, [id, api]);
 
   const setCorr = (key, val) => setCorrections(prev => ({ ...prev, [key]: val }));
+
+  const handleMarketPrepare = async (eligibleUnits, readiness) => {
+    if (marketPreparingRef.current) return;
+
+    const targetReadiness = readiness || marketReadiness;
+    if (!targetReadiness) {
+      toast('주변시세 준비 상태를 먼저 불러와주세요', 'error');
+      return;
+    }
+    if (!Array.isArray(eligibleUnits) || eligibleUnits.length === 0) {
+      toast('주변시세 준비 대상 unit이 없습니다', 'error');
+      return;
+    }
+    if (targetReadiness.rtmsServiceKeyConfigured !== true) {
+      toast('RTMS service key가 설정되지 않아 주변시세 준비를 실행할 수 없습니다', 'error');
+      return;
+    }
+
+    marketPreparingRef.current = true;
+    setMarketPreparing(true);
+    try {
+      const res = await api.post(`/api/admin/market/announcements/${id}/prepare`, {
+        sourceType: MARKET_SOURCE_TYPE,
+        dealYm: marketDealYmRange.dealYmTo,
+        dealYmFrom: marketDealYmRange.dealYmFrom,
+        dealYmTo: marketDealYmRange.dealYmTo,
+        numOfRows: 100,
+        maxPages: 10,
+        minimumSampleCount: 3,
+        retryNoLawdCode: true,
+      });
+
+      if (!res.ok) {
+        toast('주변시세 준비 요청에 실패했습니다', 'error');
+        return;
+      }
+
+      const result = await res.json();
+      const prepareStatus = typeof result === 'string' ? result : result?.status;
+      if (prepareStatus === 'SUCCESS') {
+        toast('주변시세 준비가 완료되었습니다', 'success');
+        await fetchMarketReadiness();
+      } else if (prepareStatus === 'PARTIAL_SUCCESS') {
+        toast('주변시세 준비가 일부 완료되었습니다', 'info');
+        await fetchMarketReadiness();
+      } else if (prepareStatus === 'NO_ELIGIBLE_UNITS') {
+        toast('주변시세 준비 대상 unit이 없습니다', 'info');
+        await fetchMarketReadiness();
+      } else {
+        toast('주변시세 준비 요청 결과를 확인해주세요', 'info');
+        await fetchMarketReadiness();
+      }
+    } catch {
+      toast('주변시세 준비 요청 중 서버 오류가 발생했습니다', 'error');
+    } finally {
+      marketPreparingRef.current = false;
+      setMarketPreparing(false);
+    }
+  };
 
   const handleSubmit = async () => {
     if (!action) { toast('검수 액션을 선택해주세요', 'error'); return; }
@@ -460,6 +565,15 @@ export default function AdminReviewDetailPage() {
       </AdminRawSection>
 
       <ReviewUnitsSection units={units} />
+
+      <AdminMarketReadinessSection
+        readiness={marketReadiness}
+        loading={marketReadinessLoading}
+        error={marketReadinessError}
+        preparing={marketPreparing}
+        onRefresh={fetchMarketReadiness}
+        onPrepare={handleMarketPrepare}
+      />
 
       <div style={S.card}>
         <h2 style={S.cardTitle}>검수 액션</h2>
