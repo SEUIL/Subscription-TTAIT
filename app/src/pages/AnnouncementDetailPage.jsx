@@ -71,8 +71,11 @@ const EMBEDDED_MARKET_STATUS_MAP = {
 
 const MARKET_SOURCE_LABELS = {
   APT_RENT: '아파트 전월세',
-  OFFICETEL_RENT: '오피스텔 전월세',
+  APT_TRADE: '아파트 매매',
   ROW_HOUSE_RENT: '연립/다세대 전월세',
+  ROW_HOUSE_TRADE: '연립/다세대 매매',
+  OFFICETEL_RENT: '오피스텔 전월세',
+  OFFICETEL_TRADE: '오피스텔 매매',
 };
 
 const MARKET_METRIC_DEFINITIONS = [
@@ -104,10 +107,11 @@ const formatDealYmLabel = (dealYm) => {
 };
 
 const getMarketDealYmRange = (referenceDate = new Date()) => {
-  const currentYear = referenceDate.getFullYear();
-  const currentMonth = String(referenceDate.getMonth() + 1).padStart(2, '0');
-  const dealYmFrom = `${currentYear}01`;
-  const dealYmTo = `${currentYear}${currentMonth}`;
+  const dealYmToDate = new Date(referenceDate.getFullYear(), referenceDate.getMonth() - 1, 1);
+  const dealYmFromDate = new Date(dealYmToDate.getFullYear(), dealYmToDate.getMonth() - 5, 1);
+  const formatDealYm = (date) => `${date.getFullYear()}${String(date.getMonth() + 1).padStart(2, '0')}`;
+  const dealYmFrom = formatDealYm(dealYmFromDate);
+  const dealYmTo = formatDealYm(dealYmToDate);
 
   return {
     dealYmFrom,
