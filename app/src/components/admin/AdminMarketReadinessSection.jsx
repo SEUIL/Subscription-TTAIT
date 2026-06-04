@@ -39,8 +39,8 @@ const STATUS_META = {
     label: 'SNAPSHOT_NOT_FOUND',
     badge: '준비 필요',
     tone: 'neutral',
-    title: '시세 snapshot 없음',
-    helper: 'lawdCd와 전용면적 기준으로 RTMS 수집 및 snapshot 집계가 필요합니다.',
+    title: '시세 데이터 준비 필요',
+    helper: '시세 데이터 준비를 실행해 RTMS 수집 및 snapshot 집계를 진행하세요.',
   },
   INSUFFICIENT_DATA: {
     label: 'INSUFFICIENT_DATA',
@@ -51,24 +51,24 @@ const STATUS_META = {
   },
   UNIT_LAWD_CD_MISSING: {
     label: 'UNIT_LAWD_CD_MISSING',
-    badge: '주소 보완',
+    badge: '주소 변환 필요',
     tone: 'blocked',
-    title: 'lawdCd 없음',
-    helper: '주소 정규화 또는 법정동 코드 매칭이 먼저 필요합니다.',
+    title: '주소 변환 필요',
+    helper: '시세 데이터 준비 실행 시 주소 변환을 먼저 시도합니다.',
   },
   UNIT_AREA_MISSING: {
     label: 'UNIT_AREA_MISSING',
     badge: '면적 보완',
     tone: 'blocked',
     title: '전용면적 없음',
-    helper: 'exclusiveAreaValue가 없어 주변 거래 면적 범위를 만들 수 없습니다.',
+    helper: '전용면적을 입력해야 주변 거래 면적 범위를 만들 수 있습니다.',
   },
   API_KEY_MISSING: {
     label: 'API_KEY_MISSING',
     badge: '설정 필요',
     tone: 'danger',
     title: 'RTMS 서비스키 미설정',
-    helper: '서비스키가 설정되기 전까지 prepare 실행을 막습니다.',
+    helper: '서비스키를 설정해야 시세 데이터 준비를 실행할 수 있습니다.',
   },
   UNKNOWN: {
     label: 'UNKNOWN',
@@ -352,6 +352,10 @@ function hasAreaValue(value) {
   return value !== null && value !== undefined && value !== '';
 }
 
+function hasTextValue(value) {
+  return value !== null && value !== undefined && String(value).trim() !== '';
+}
+
 function getAdminStatusKey(unit) {
   if (unit?.marketReady) return 'READY';
   return unit?.blocker || 'UNKNOWN';
@@ -361,14 +365,15 @@ function getStatusMeta(unit) {
   return STATUS_META[getAdminStatusKey(unit)] || STATUS_META.UNKNOWN;
 }
 
-function isPrepareEligibleUnit(unit, allowInsufficientDataReprepare = false) {
+function isPrepareEligibleUnit(unit, readiness) {
   const blocker = getAdminStatusKey(unit);
-  return Boolean(unit?.lawdCd)
+  return readiness?.rtmsServiceKeyConfigured === true
+    && hasTextValue(unit?.fullAddress)
     && hasAreaValue(unit?.exclusiveAreaValue)
     && !unit?.marketReady
     && (
-      blocker === 'SNAPSHOT_NOT_FOUND'
-      || (allowInsufficientDataReprepare && blocker === 'INSUFFICIENT_DATA')
+      blocker === 'UNIT_LAWD_CD_MISSING'
+      || blocker === 'SNAPSHOT_NOT_FOUND'
     );
 }
 
@@ -417,47 +422,47 @@ function getRowButtonStyle(tone, disabled) {
 }
 
 function getPrepareDisabledReason({ loading, preparing, readiness, eligibleUnits, onPrepare }) {
-  if (loading) return 'readiness 조회 중에는 prepare를 실행할 수 없습니다.';
-  if (preparing) return 'prepare가 실행 중입니다.';
-  if (!readiness) return 'readiness 데이터가 없습니다.';
-  if (!readiness.rtmsServiceKeyConfigured) return 'RTMS 서비스키가 설정되지 않았습니다.';
-  if (eligibleUnits.length === 0) return 'prepare 가능한 unit이 없습니다.';
-  if (typeof onPrepare !== 'function') return 'onPrepare 핸들러가 연결되지 않았습니다.';
+  if (loading) return '준비 상태를 조회 중입니다.';
+  if (preparing) return '시세 데이터 준비를 실행 중입니다.';
+  if (!readiness) return '준비 상태 데이터가 없어 실행할 수 없습니다.';
+  if (!readiness.rtmsServiceKeyConfigured) return 'RTMS 서비스키를 설정한 뒤 실행하세요.';
+  if (eligibleUnits.length === 0) return '주소, 전용면적, blocker 상태를 확인하세요. 준비 실행 대상은 주소 변환 필요 또는 snapshot 없음 상태입니다.';
+  if (typeof onPrepare !== 'function') return '시세 데이터 준비 실행 기능이 연결되지 않았습니다.';
   return '';
 }
 
 function getRefreshDisabledReason({ loading, preparing, onRefresh }) {
   if (loading) return '조회 중';
-  if (preparing) return 'prepare 실행 중';
-  if (typeof onRefresh !== 'function') return 'onRefresh 미연결';
+  if (preparing) return '시세 데이터 준비 실행 중';
+  if (typeof onRefresh !== 'function') return '새로고침 기능 미연결';
   return '';
 }
 
-function getRowAction(unit, allowInsufficientDataReprepare) {
+function getRowAction(unit, readiness) {
   const key = getAdminStatusKey(unit);
-  if (isPrepareEligibleUnit(unit, allowInsufficientDataReprepare)) {
+  if (isPrepareEligibleUnit(unit, readiness)) {
     return {
-      label: key === 'INSUFFICIENT_DATA' ? '표본 재수집' : '시세 데이터 준비',
+      label: key === 'UNIT_LAWD_CD_MISSING' ? '주소 변환 후 시세 데이터 준비' : '시세 데이터 준비',
       tone: 'primary',
     };
   }
   if (key === 'READY') return { label: 'READY', tone: 'outline' };
-  return { label: '준비 불가', tone: 'secondary' };
+  return { label: '상태 확인', tone: 'secondary' };
 }
 
-function getRowDisabledReason({ unit, readiness, loading, preparing, allowInsufficientDataReprepare, onPrepare }) {
+function getRowDisabledReason({ unit, readiness, loading, preparing, onPrepare }) {
   const key = getAdminStatusKey(unit);
-  if (loading) return 'readiness 조회 중입니다.';
-  if (preparing) return 'prepare 실행 중입니다.';
-  if (!readiness?.rtmsServiceKeyConfigured) return 'RTMS 서비스키 설정이 필요합니다.';
-  if (typeof onPrepare !== 'function') return 'onPrepare 핸들러가 연결되지 않았습니다.';
-  if (isPrepareEligibleUnit(unit, allowInsufficientDataReprepare)) return '';
-  if (key === 'READY') return '이미 admin READY 상태입니다.';
-  if (!unit?.lawdCd) return 'lawdCd 보완 후 prepare 가능합니다.';
-  if (!hasAreaValue(unit?.exclusiveAreaValue)) return 'exclusiveAreaValue 보완 후 prepare 가능합니다.';
-  if (key === 'INSUFFICIENT_DATA') return 'allowInsufficientDataReprepare=false라 재수집하지 않습니다.';
-  if (key === 'UNKNOWN') return 'blocker 사유 확인이 필요합니다.';
-  return `${key} 상태라 prepare 대상이 아닙니다.`;
+  if (loading) return '준비 상태를 조회 중입니다.';
+  if (preparing) return '시세 데이터 준비를 실행 중입니다.';
+  if (!readiness?.rtmsServiceKeyConfigured) return 'RTMS 서비스키를 설정한 뒤 실행하세요.';
+  if (typeof onPrepare !== 'function') return '시세 데이터 준비 실행 기능이 연결되지 않았습니다.';
+  if (isPrepareEligibleUnit(unit, readiness)) return '';
+  if (key === 'READY') return '이미 시세 데이터 준비가 완료되었습니다.';
+  if (!hasTextValue(unit?.fullAddress)) return '주소를 입력하거나 주소 정보를 보완한 뒤 다시 실행하세요.';
+  if (!hasAreaValue(unit?.exclusiveAreaValue)) return '전용면적을 입력한 뒤 다시 실행하세요.';
+  if (key === 'INSUFFICIENT_DATA') return '거래 표본이 부족합니다. 재수집이 필요하면 별도 정책에 따라 처리하세요.';
+  if (key === 'UNKNOWN') return 'blocker 상태를 확인해 준비 대상 여부를 판단하세요.';
+  return `${key} 상태는 현재 시세 데이터 준비 대상이 아닙니다.`;
 }
 
 function Badge({ tone, children }) {
@@ -484,9 +489,11 @@ function SectionHeader({ loading, preparing, readiness, eligibleUnits, onRefresh
   const refreshDisabledReason = getRefreshDisabledReason({ loading, preparing, onRefresh });
   const prepareDisabled = Boolean(prepareDisabledReason);
   const refreshDisabled = Boolean(refreshDisabledReason);
+  const hasAddressConversionTarget = eligibleUnits.some(unit => getAdminStatusKey(unit) === 'UNIT_LAWD_CD_MISSING');
+  const prepareLabelBase = hasAddressConversionTarget ? '주소 변환 후 시세 데이터 준비' : '시세 데이터 준비';
   const prepareLabel = preparing
-    ? '시세 데이터 준비 중'
-    : `시세 데이터 준비${eligibleUnits.length > 0 ? ` ${eligibleUnits.length}건` : ''}`;
+    ? `${prepareLabelBase} 중`
+    : `${prepareLabelBase}${eligibleUnits.length > 0 ? ` ${eligibleUnits.length}건` : ''}`;
 
   return (
     <div style={S.head}>
@@ -494,7 +501,7 @@ function SectionHeader({ loading, preparing, readiness, eligibleUnits, onRefresh
         <div style={S.eyebrow}>ADMIN MARKET READINESS</div>
         <h2 style={S.title}>주변시세 준비 상태</h2>
         <p style={S.desc}>
-          관리자 상세 화면에서 readiness의 marketReady/blocker 값을 기준으로 주변시세 준비 여부와 prepare 대상을 확인합니다.
+          관리자 상세 화면에서 주변시세 준비 여부와 시세 데이터 준비 대상을 확인합니다.
         </p>
       </div>
       <div style={S.actions}>
@@ -521,9 +528,11 @@ function SectionHeader({ loading, preparing, readiness, eligibleUnits, onRefresh
             {prepareLabel}
           </button>
           {prepareDisabledReason ? (
-            <span style={S.reason}>prepare: {prepareDisabledReason}</span>
+            <span style={S.reason}>준비 실행: {prepareDisabledReason}</span>
+          ) : hasAddressConversionTarget ? (
+            <span style={{ ...S.reason, color: COLORS.green }}>주소를 국토부 조회용 지역번호로 변환한 뒤 주변시세 데이터를 준비합니다.</span>
           ) : (
-            <span style={{ ...S.reason, color: COLORS.green }}>prepare 가능 unit {eligibleUnits.length}건</span>
+            <span style={{ ...S.reason, color: COLORS.green }}>시세 데이터 준비 대상 {eligibleUnits.length}건</span>
           )}
         </div>
       </div>
@@ -580,8 +589,8 @@ function QueryBar({ readiness, eligibleCount, allowInsufficientDataReprepare }) 
       <QueryChip label="announcementId" value={fmt(readiness.announcementId)} />
       <QueryChip label="sourceType" value={fmt(readiness.sourceType)} suffix={getSourceTypeLabel(readiness.sourceType)} />
       <QueryChip label="조회기간" value={`${fmt(readiness.dealYmFrom)} ~ ${fmt(readiness.dealYmTo)}`} />
-      <QueryChip label="prepare 대상" value={`${eligibleCount}건`} />
-      <QueryChip label="INSUFFICIENT_DATA 재실행" value={allowInsufficientDataReprepare ? '허용' : '차단'} />
+      <QueryChip label="준비 실행 대상" value={`${eligibleCount}건`} />
+      <QueryChip label="표본 부족 재실행" value={allowInsufficientDataReprepare ? '별도 정책 확인' : '대상 제외'} />
     </div>
   );
 }
@@ -589,8 +598,8 @@ function QueryBar({ readiness, eligibleCount, allowInsufficientDataReprepare }) 
 function RtmsKeyAlert({ configured }) {
   const palette = configured ? TONE_STYLES.success : TONE_STYLES.danger;
   const message = configured
-    ? 'RTMS 서비스키가 설정되어 있습니다. prepare 가능 unit이 있으면 데이터 준비를 실행할 수 있습니다.'
-    : 'RTMS 서비스키가 설정되지 않았습니다. 서비스키를 설정하기 전까지 prepare 버튼과 행 액션은 비활성화됩니다.';
+    ? 'RTMS 서비스키가 설정되어 있습니다. 주소와 전용면적이 있는 준비 대상은 시세 데이터 준비를 실행할 수 있습니다.'
+    : 'RTMS 서비스키가 설정되지 않았습니다. 서비스키를 설정한 뒤 시세 데이터 준비를 실행하세요.';
 
   return (
     <div
@@ -612,8 +621,8 @@ function KpiGrid({ readiness, units, eligibleUnits }) {
     { label: '준비 완료 unit', value: counts.ready, note: 'marketReady=true', primary: true },
     { label: '차단 unit', value: counts.blocked, note: 'marketReady=false' },
     { label: '조회 대상', value: counts.total, note: 'readiness.units[] 기준' },
-    { label: 'prepare 가능', value: eligibleUnits.length, note: 'lawdCd + 전용면적 + blocker 기준' },
-    { label: 'RTMS key', value: configuredLabel, note: 'false면 prepare disabled', valueColor: configuredTone },
+    { label: '준비 실행 대상', value: eligibleUnits.length, note: 'RTMS key + 주소 + 전용면적 + blocker 기준' },
+    { label: 'RTMS key', value: configuredLabel, note: 'OFF면 시세 데이터 준비 실행 불가', valueColor: configuredTone },
   ];
 
   return (
@@ -644,15 +653,14 @@ function UnitState({ unit }) {
   );
 }
 
-function UnitRow({ unit, readiness, loading, preparing, allowInsufficientDataReprepare, onPrepareUnit }) {
+function UnitRow({ unit, readiness, loading, preparing, onPrepareUnit }) {
   const meta = getStatusMeta(unit);
-  const action = getRowAction(unit, allowInsufficientDataReprepare);
+  const action = getRowAction(unit, readiness);
   const disabledReason = getRowDisabledReason({
     unit,
     readiness,
     loading,
     preparing,
-    allowInsufficientDataReprepare,
     onPrepare: onPrepareUnit,
   });
   const disabled = Boolean(disabledReason);
@@ -710,7 +718,7 @@ function UnitRow({ unit, readiness, loading, preparing, allowInsufficientDataRep
   );
 }
 
-function UnitTable({ readiness, units, loading, preparing, allowInsufficientDataReprepare, onPrepareUnit }) {
+function UnitTable({ readiness, units, loading, preparing, onPrepareUnit }) {
   return (
     <div style={S.tableWrap}>
       <table style={S.table}>
@@ -732,7 +740,6 @@ function UnitTable({ readiness, units, loading, preparing, allowInsufficientData
               readiness={readiness}
               loading={loading}
               preparing={preparing}
-              allowInsufficientDataReprepare={allowInsufficientDataReprepare}
               onPrepareUnit={onPrepareUnit}
             />
           ))}
@@ -760,7 +767,7 @@ export default function AdminMarketReadinessSection({
 }) {
   const units = Array.isArray(readiness?.units) ? readiness.units : [];
   const eligibleUnits = readiness
-    ? units.filter(unit => isPrepareEligibleUnit(unit, allowInsufficientDataReprepare))
+    ? units.filter(unit => isPrepareEligibleUnit(unit, readiness))
     : [];
 
   const handlePrepareAll = () => {
@@ -805,7 +812,6 @@ export default function AdminMarketReadinessSection({
             units={units}
             loading={loading}
             preparing={preparing}
-            allowInsufficientDataReprepare={allowInsufficientDataReprepare}
             onPrepareUnit={handlePrepareUnit}
           />
         </>

@@ -340,6 +340,14 @@ export default function AdminReviewDetailPage() {
 
   const setCorr = (key, val) => setCorrections(prev => ({ ...prev, [key]: val }));
 
+  const hasAddressConversionFailure = (result) => {
+    if (!result || typeof result !== 'object') return false;
+    const noLawdCodeCount = Number(result.normalization?.noLawdCodeCount || 0);
+    const hasSkippedLawdUnit = Array.isArray(result.units)
+      && result.units.some(unit => unit?.status === 'SKIPPED' && unit?.blocker === 'UNIT_LAWD_CD_MISSING');
+    return noLawdCodeCount > 0 || hasSkippedLawdUnit;
+  };
+
   const handleMarketPrepare = async (eligibleUnits, readiness) => {
     if (marketPreparingRef.current) return;
 
@@ -378,19 +386,19 @@ export default function AdminReviewDetailPage() {
 
       const result = await res.json();
       const prepareStatus = typeof result === 'string' ? result : result?.status;
-      if (prepareStatus === 'SUCCESS') {
+      const addressConversionFailed = hasAddressConversionFailure(result);
+      if (addressConversionFailed) {
+        toast('주소 변환 실패: 법정동 매핑 확인 필요', 'error');
+      } else if (prepareStatus === 'SUCCESS') {
         toast('주변시세 준비가 완료되었습니다', 'success');
-        await fetchMarketReadiness();
       } else if (prepareStatus === 'PARTIAL_SUCCESS') {
         toast('주변시세 준비가 일부 완료되었습니다', 'info');
-        await fetchMarketReadiness();
       } else if (prepareStatus === 'NO_ELIGIBLE_UNITS') {
         toast('주변시세 준비 대상 unit이 없습니다', 'info');
-        await fetchMarketReadiness();
       } else {
         toast('주변시세 준비 요청 결과를 확인해주세요', 'info');
-        await fetchMarketReadiness();
       }
+      await fetchMarketReadiness();
     } catch {
       toast('주변시세 준비 요청 중 서버 오류가 발생했습니다', 'error');
     } finally {
