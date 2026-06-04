@@ -43,3 +43,15 @@ avatar (→ My Page), back buttons, and card clicks.
 | `ADMIN_LH_IMPORT_HANDOFF.md` | 다음 프론트 작업자용 이식 메모 |
 
 확인 URL: 로컬 서버 실행 후 `http://localhost:8000/ui_kits/web/admin_handoff.html`
+
+## 주변시세 readiness / prepare 디자인 핸드오프
+
+| 파일 | 설명 |
+|---|---|
+| `admin_market_readiness_handoff.html` | readiness 조회, prepare 실행, public/detail 상태 분기를 확인하는 정적 프로토타입 |
+| `AdminMarketReadinessSection.jsx` | `AdminReviewDetailPage` 또는 별도 관리자 market 화면에 이식 가능한 React 목업 |
+| `ADMIN_MARKET_READINESS_HANDOFF.md` | 프론트팀 전달용 API 연결/상태 매핑/결정사항 메모 |
+
+확인 URL:
+- repo root에서 서버 실행 시 `http://localhost:8000/ttait_Front/ui_kits/web/admin_market_readiness_handoff.html`
+- `ttait_Front`에서 서버 실행 시 `http://localhost:8000/ui_kits/web/admin_market_readiness_handoff.html`
