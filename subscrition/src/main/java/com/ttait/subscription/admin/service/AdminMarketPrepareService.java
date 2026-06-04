@@ -10,6 +10,8 @@ import com.ttait.subscription.announcement.repository.AnnouncementRepository;
 import com.ttait.subscription.announcement.repository.AnnouncementUnitRepository;
 import com.ttait.subscription.common.exception.ApiException;
 import com.ttait.subscription.external.rtms.RtmsSourceType;
+import com.ttait.subscription.market.domain.MarketSourceType;
+import com.ttait.subscription.market.service.MarketSourceTypeResolver;
 import java.math.BigDecimal;
 import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
@@ -50,7 +52,6 @@ public class AdminMarketPrepareService {
     public MarketPrepareResponse prepare(Long announcementId, MarketPrepareRequest request) {
         validate(announcementId, request);
         ensureAnnouncementExists(announcementId);
-        RtmsSourceType sourceType = request.sourceTypeOrDefault();
         AddressNormalizationResponse normalization = null;
         if (request.retryNoLawdCodeOrDefault()) {
             normalization = addressService.normalizeAnnouncementUnits(announcementId, true);
@@ -58,7 +59,8 @@ public class AdminMarketPrepareService {
 
         List<MarketPrepareResponse.UnitPreparation> units = new ArrayList<>();
         Map<BatchKey, MarketRtmsSnapshotBatchRequest> batchRequests = new LinkedHashMap<>();
-        for (AnnouncementUnit unit : unitRepository.findByAnnouncementIdAndDeletedFalseOrderByUnitOrderAsc(announcementId)) {
+        for (AnnouncementUnit unit : unitRepository.findWithAnnouncementByAnnouncementIdAndDeletedFalseOrderByUnitOrderAsc(announcementId)) {
+            RtmsSourceType sourceType = resolveSourceType(unit, request.sourceTypeOrDefault());
             if (!StringUtils.hasText(unit.getLawdCd())) {
                 units.add(unitPreparation(unit, sourceType, null, null, "SKIPPED", "UNIT_LAWD_CD_MISSING"));
                 continue;
@@ -195,6 +197,12 @@ public class AdminMarketPrepareService {
         } catch (DateTimeParseException e) {
             throw new ApiException(HttpStatus.BAD_REQUEST, fieldName + " must be a valid YYYYMM");
         }
+    }
+
+    private RtmsSourceType resolveSourceType(AnnouncementUnit unit, RtmsSourceType requestedSourceType) {
+        MarketSourceType requested = MarketSourceType.valueOf(requestedSourceType.name());
+        MarketSourceType sourceType = MarketSourceTypeResolver.resolve(unit, requested);
+        return RtmsSourceType.valueOf(sourceType.name());
     }
 
     private record BatchKey(String sourceType,

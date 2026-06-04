@@ -15,6 +15,17 @@ public interface AnnouncementUnitRepository extends JpaRepository<AnnouncementUn
 
     List<AnnouncementUnit> findByAnnouncementIdAndDeletedFalseOrderByUnitOrderAsc(Long announcementId);
 
+    @Query("""
+            SELECT u
+            FROM AnnouncementUnit u
+            JOIN FETCH u.announcement
+            WHERE u.announcement.id = :announcementId
+              AND u.deleted = false
+            ORDER BY u.unitOrder ASC
+            """)
+    List<AnnouncementUnit> findWithAnnouncementByAnnouncementIdAndDeletedFalseOrderByUnitOrderAsc(
+            @Param("announcementId") Long announcementId);
+
     List<AnnouncementUnit> findByAnnouncementIdAndGeocodeStatusAndDeletedFalseOrderByUnitOrderAsc(
             Long announcementId,
             GeocodeStatus geocodeStatus);

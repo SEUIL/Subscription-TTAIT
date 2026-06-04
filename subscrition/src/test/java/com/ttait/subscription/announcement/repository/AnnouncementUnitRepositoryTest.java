@@ -12,11 +12,13 @@ import com.ttait.subscription.config.JpaConfig;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
+import org.hibernate.Hibernate;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.boot.test.autoconfigure.orm.jpa.TestEntityManager;
 import org.springframework.context.annotation.Import;
 
 @DataJpaTest(properties = {
@@ -37,6 +39,9 @@ class AnnouncementUnitRepositoryTest {
 
     @Autowired
     private AnnouncementUnitRepository unitRepository;
+
+    @Autowired
+    private TestEntityManager entityManager;
 
     @Test
     @DisplayName("공고별 미요청 geocoding unit만 unitOrder 순으로 조회한다")
@@ -72,6 +77,22 @@ class AnnouncementUnitRepositoryTest {
         assertThat(result)
                 .extracting(AnnouncementUnit::getSourceUnitKey)
                 .containsExactly("target-order-1", "target-order-2");
+    }
+
+    @Test
+    @DisplayName("공고별 unit 조회 시 sourceType resolver가 쓸 announcement를 함께 초기화한다")
+    void findUnitsWithAnnouncementByAnnouncementIdInitializesAnnouncement() {
+        Announcement target = announcementRepository.save(announcement("PAN-UNIT-003"));
+        unitRepository.save(unit(target, "target-order-1", 1));
+        unitRepository.flush();
+        entityManager.clear();
+
+        List<AnnouncementUnit> result = unitRepository
+                .findWithAnnouncementByAnnouncementIdAndDeletedFalseOrderByUnitOrderAsc(target.getId());
+
+        assertThat(result).hasSize(1);
+        assertThat(Hibernate.isInitialized(result.get(0).getAnnouncement())).isTrue();
+        assertThat(result.get(0).getAnnouncement().getHouseTypeNormalized()).isEqualTo("아파트");
     }
 
     private Announcement announcement(String sourceNoticeId) {

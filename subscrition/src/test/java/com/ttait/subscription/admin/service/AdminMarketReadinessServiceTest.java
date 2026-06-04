@@ -60,7 +60,7 @@ class AdminMarketReadinessServiceTest {
     void readinessReportsMissingLawdCdBeforeSnapshotLookup() {
         AnnouncementUnit unit = unit(false, new BigDecimal("59.84"));
         given(announcementRepository.existsById(1L)).willReturn(true);
-        given(unitRepository.findByAnnouncementIdAndDeletedFalseOrderByUnitOrderAsc(1L)).willReturn(List.of(unit));
+        given(unitRepository.findWithAnnouncementByAnnouncementIdAndDeletedFalseOrderByUnitOrderAsc(1L)).willReturn(List.of(unit));
 
         MarketReadinessResponse response = service.getReadiness(1L, MarketSourceType.APT_RENT, "202401", "202406");
 
@@ -79,7 +79,7 @@ class AdminMarketReadinessServiceTest {
         AnnouncementUnit unit = unit(true, new BigDecimal("59.84"));
         MarketPriceSnapshot snapshot = snapshot(MarketSnapshotStatus.OK);
         given(announcementRepository.existsById(1L)).willReturn(true);
-        given(unitRepository.findByAnnouncementIdAndDeletedFalseOrderByUnitOrderAsc(1L)).willReturn(List.of(unit));
+        given(unitRepository.findWithAnnouncementByAnnouncementIdAndDeletedFalseOrderByUnitOrderAsc(1L)).willReturn(List.of(unit));
         given(rawRepository.countBySourceTypeAndLawdCdAndDealYmBetweenAndExclusiveAreaBetween(
                 MarketSourceType.APT_RENT, "41570", "202401", "202406", new BigDecimal("59.84"), new BigDecimal("59.84")))
                 .willReturn(12L);
@@ -100,10 +100,31 @@ class AdminMarketReadinessServiceTest {
     }
 
     @Test
+    void readinessUsesUnitRecommendedSourceTypeForOfficetelUnit() {
+        AnnouncementUnit unit = unit(true, new BigDecimal("29.90"), "오피스텔");
+        MarketPriceSnapshot snapshot = snapshot(MarketSnapshotStatus.OK, MarketSourceType.OFFICETEL_RENT);
+        given(announcementRepository.existsById(1L)).willReturn(true);
+        given(unitRepository.findWithAnnouncementByAnnouncementIdAndDeletedFalseOrderByUnitOrderAsc(1L)).willReturn(List.of(unit));
+        given(rawRepository.countBySourceTypeAndLawdCdAndDealYmBetweenAndExclusiveAreaBetween(
+                MarketSourceType.OFFICETEL_RENT, "41570", "202401", "202406", new BigDecimal("29.90"), new BigDecimal("29.90")))
+                .willReturn(6L);
+        given(snapshotRepository.findFirstBySourceTypeAndLawdCdAndDealYmFromAndDealYmToAndAreaMinLessThanEqualAndAreaMaxGreaterThanEqualOrderByAggregatedAtDesc(
+                MarketSourceType.OFFICETEL_RENT, "41570", "202401", "202406", new BigDecimal("29.90"), new BigDecimal("29.90")))
+                .willReturn(Optional.of(snapshot));
+
+        MarketReadinessResponse response = service.getReadiness(1L, MarketSourceType.APT_RENT, "202401", "202406");
+
+        MarketReadinessResponse.UnitReadiness unitReadiness = response.units().get(0);
+        assertThat(unitReadiness.recommendedSourceType()).isEqualTo("OFFICETEL_RENT");
+        assertThat(unitReadiness.rawTransactionCount()).isEqualTo(6L);
+        assertThat(unitReadiness.marketReady()).isTrue();
+    }
+
+    @Test
     void readinessReportsInsufficientDataWhenSnapshotIsBelowThreshold() {
         AnnouncementUnit unit = unit(true, new BigDecimal("59.84"));
         given(announcementRepository.existsById(1L)).willReturn(true);
-        given(unitRepository.findByAnnouncementIdAndDeletedFalseOrderByUnitOrderAsc(1L)).willReturn(List.of(unit));
+        given(unitRepository.findWithAnnouncementByAnnouncementIdAndDeletedFalseOrderByUnitOrderAsc(1L)).willReturn(List.of(unit));
         given(rawRepository.countBySourceTypeAndLawdCdAndDealYmBetweenAndExclusiveAreaBetween(
                 MarketSourceType.APT_RENT, "41570", "202401", "202406", new BigDecimal("59.84"), new BigDecimal("59.84")))
                 .willReturn(1L);
@@ -137,6 +158,10 @@ class AdminMarketReadinessServiceTest {
     }
 
     private AnnouncementUnit unit(boolean withLawdCd, BigDecimal exclusiveArea) {
+        return unit(withLawdCd, exclusiveArea, "아파트");
+    }
+
+    private AnnouncementUnit unit(boolean withLawdCd, BigDecimal exclusiveArea, String houseTypeNormalized) {
         Announcement announcement = Announcement.builder()
                 .sourcePrimary(SourceType.LH)
                 .sourceNoticeId("LH-1")
@@ -159,7 +184,7 @@ class AdminMarketReadinessServiceTest {
                 .fullAddress("경기도 김포시 마산동 1")
                 .regionLevel1("경기도")
                 .regionLevel2("김포시")
-                .houseTypeNormalized("아파트")
+                .houseTypeNormalized(houseTypeNormalized)
                 .exclusiveAreaValue(exclusiveArea)
                 .depositAmount(75000L)
                 .monthlyRentAmount(35L)
@@ -172,8 +197,12 @@ class AdminMarketReadinessServiceTest {
     }
 
     private MarketPriceSnapshot snapshot(MarketSnapshotStatus status) {
+        return snapshot(status, MarketSourceType.APT_RENT);
+    }
+
+    private MarketPriceSnapshot snapshot(MarketSnapshotStatus status, MarketSourceType sourceType) {
         MarketPriceSnapshot snapshot = MarketPriceSnapshot.builder()
-                .sourceType(MarketSourceType.APT_RENT)
+                .sourceType(sourceType)
                 .lawdCd("41570")
                 .dealYmFrom("202401")
                 .dealYmTo("202406")

@@ -11,6 +11,7 @@ import com.ttait.subscription.market.domain.MarketSnapshotStatus;
 import com.ttait.subscription.market.domain.MarketSourceType;
 import com.ttait.subscription.market.repository.MarketPriceSnapshotRepository;
 import com.ttait.subscription.market.repository.MarketTransactionRawRepository;
+import com.ttait.subscription.market.service.MarketSourceTypeResolver;
 import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
@@ -53,7 +54,7 @@ public class AdminMarketReadinessService {
         validate(announcementId, sourceType, dealYmFrom, dealYmTo);
         ensureAnnouncementExists(announcementId);
         List<MarketReadinessResponse.UnitReadiness> units = unitRepository
-                .findByAnnouncementIdAndDeletedFalseOrderByUnitOrderAsc(announcementId)
+                .findWithAnnouncementByAnnouncementIdAndDeletedFalseOrderByUnitOrderAsc(announcementId)
                 .stream()
                 .map(unit -> toReadiness(unit, sourceType, dealYmFrom, dealYmTo))
                 .toList();
@@ -71,18 +72,19 @@ public class AdminMarketReadinessService {
     }
 
     private MarketReadinessResponse.UnitReadiness toReadiness(AnnouncementUnit unit,
-                                                              MarketSourceType sourceType,
-                                                              String dealYmFrom,
-                                                              String dealYmTo) {
+                                                               MarketSourceType sourceType,
+                                                               String dealYmFrom,
+                                                               String dealYmTo) {
+        MarketSourceType recommendedSourceType = MarketSourceTypeResolver.resolve(unit, sourceType);
         if (!StringUtils.hasText(unit.getLawdCd())) {
-            return unitReadiness(unit, sourceType, 0, false, null, false, "UNIT_LAWD_CD_MISSING");
+            return unitReadiness(unit, recommendedSourceType, 0, false, null, false, "UNIT_LAWD_CD_MISSING");
         }
         if (unit.getExclusiveAreaValue() == null) {
-            return unitReadiness(unit, sourceType, 0, false, null, false, "UNIT_AREA_MISSING");
+            return unitReadiness(unit, recommendedSourceType, 0, false, null, false, "UNIT_AREA_MISSING");
         }
 
         long rawCount = rawRepository.countBySourceTypeAndLawdCdAndDealYmBetweenAndExclusiveAreaBetween(
-                sourceType,
+                recommendedSourceType,
                 unit.getLawdCd(),
                 dealYmFrom,
                 dealYmTo,
@@ -91,7 +93,7 @@ public class AdminMarketReadinessService {
         );
         MarketPriceSnapshot snapshot = snapshotRepository
                 .findFirstBySourceTypeAndLawdCdAndDealYmFromAndDealYmToAndAreaMinLessThanEqualAndAreaMaxGreaterThanEqualOrderByAggregatedAtDesc(
-                        sourceType,
+                        recommendedSourceType,
                         unit.getLawdCd(),
                         dealYmFrom,
                         dealYmTo,
@@ -99,12 +101,12 @@ public class AdminMarketReadinessService {
                         unit.getExclusiveAreaValue())
                 .orElse(null);
         if (snapshot == null) {
-            return unitReadiness(unit, sourceType, rawCount, false, null, false, "SNAPSHOT_NOT_FOUND");
+            return unitReadiness(unit, recommendedSourceType, rawCount, false, null, false, "SNAPSHOT_NOT_FOUND");
         }
         if (snapshot.getStatus() != MarketSnapshotStatus.OK) {
-            return unitReadiness(unit, sourceType, rawCount, true, snapshot.getStatus(), false, "INSUFFICIENT_DATA");
+            return unitReadiness(unit, recommendedSourceType, rawCount, true, snapshot.getStatus(), false, "INSUFFICIENT_DATA");
         }
-        return unitReadiness(unit, sourceType, rawCount, true, snapshot.getStatus(), true, "READY");
+        return unitReadiness(unit, recommendedSourceType, rawCount, true, snapshot.getStatus(), true, "READY");
     }
 
     private MarketReadinessResponse.UnitReadiness unitReadiness(AnnouncementUnit unit,

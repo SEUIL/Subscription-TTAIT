@@ -58,7 +58,7 @@ class AdminMarketPrepareServiceTest {
         given(announcementRepository.existsById(1L)).willReturn(true);
         AnnouncementUnit ready = unit(20L, true, new BigDecimal("59.84"));
         AnnouncementUnit missingLawd = unit(21L, false, new BigDecimal("59.84"));
-        given(unitRepository.findByAnnouncementIdAndDeletedFalseOrderByUnitOrderAsc(1L))
+        given(unitRepository.findWithAnnouncementByAnnouncementIdAndDeletedFalseOrderByUnitOrderAsc(1L))
                 .willReturn(List.of(ready, missingLawd));
         given(batchService.collectRtmsAndAggregateSnapshot(any()))
                 .willReturn(successBatchResponse());
@@ -93,7 +93,7 @@ class AdminMarketPrepareServiceTest {
     void prepareCanNormalizeBeforeBatching() {
         given(announcementRepository.existsById(1L)).willReturn(true);
         AnnouncementUnit ready = unit(20L, true, new BigDecimal("59.84"));
-        given(unitRepository.findByAnnouncementIdAndDeletedFalseOrderByUnitOrderAsc(1L)).willReturn(List.of(ready));
+        given(unitRepository.findWithAnnouncementByAnnouncementIdAndDeletedFalseOrderByUnitOrderAsc(1L)).willReturn(List.of(ready));
         given(batchService.collectRtmsAndAggregateSnapshot(any())).willReturn(successBatchResponse());
 
         service.prepare(1L, new MarketPrepareRequest(
@@ -108,6 +108,36 @@ class AdminMarketPrepareServiceTest {
         ));
 
         then(addressService).should().normalizeAnnouncementUnits(1L, true);
+    }
+
+    @Test
+    void prepareUsesUnitRecommendedSourceTypeForMixedHouseTypes() {
+        given(announcementRepository.existsById(1L)).willReturn(true);
+        AnnouncementUnit apartment = unit(20L, true, new BigDecimal("59.84"), "아파트");
+        AnnouncementUnit officetel = unit(21L, true, new BigDecimal("29.90"), "오피스텔");
+        given(unitRepository.findWithAnnouncementByAnnouncementIdAndDeletedFalseOrderByUnitOrderAsc(1L))
+                .willReturn(List.of(apartment, officetel));
+        given(batchService.collectRtmsAndAggregateSnapshot(any()))
+                .willReturn(successBatchResponse());
+
+        MarketPrepareResponse response = service.prepare(1L, new MarketPrepareRequest(
+                RtmsSourceType.APT_RENT,
+                "202406",
+                100,
+                10,
+                "202401",
+                "202406",
+                3,
+                false
+        ));
+
+        assertThat(response.preparedBatchCount()).isEqualTo(2);
+        assertThat(response.units()).extracting(MarketPrepareResponse.UnitPreparation::sourceType)
+                .containsExactly("APT_RENT", "OFFICETEL_RENT");
+        ArgumentCaptor<MarketRtmsSnapshotBatchRequest> requestCaptor = ArgumentCaptor.forClass(MarketRtmsSnapshotBatchRequest.class);
+        then(batchService).should(org.mockito.Mockito.times(2)).collectRtmsAndAggregateSnapshot(requestCaptor.capture());
+        assertThat(requestCaptor.getAllValues()).extracting(MarketRtmsSnapshotBatchRequest::sourceType)
+                .containsExactly(RtmsSourceType.APT_RENT, RtmsSourceType.OFFICETEL_RENT);
     }
 
     @Test
@@ -147,7 +177,7 @@ class AdminMarketPrepareServiceTest {
     @Test
     void prepareDistinguishesExistingAnnouncementWithNoUnits() {
         given(announcementRepository.existsById(1L)).willReturn(true);
-        given(unitRepository.findByAnnouncementIdAndDeletedFalseOrderByUnitOrderAsc(1L)).willReturn(List.of());
+        given(unitRepository.findWithAnnouncementByAnnouncementIdAndDeletedFalseOrderByUnitOrderAsc(1L)).willReturn(List.of());
 
         MarketPrepareResponse response = service.prepare(1L, new MarketPrepareRequest(
                 RtmsSourceType.APT_RENT, "202406", 100, 10, "202401", "202406", 3, false));
@@ -185,6 +215,10 @@ class AdminMarketPrepareServiceTest {
     }
 
     private AnnouncementUnit unit(Long unitId, boolean withLawdCd, BigDecimal exclusiveArea) {
+        return unit(unitId, withLawdCd, exclusiveArea, "아파트");
+    }
+
+    private AnnouncementUnit unit(Long unitId, boolean withLawdCd, BigDecimal exclusiveArea, String houseTypeNormalized) {
         Announcement announcement = Announcement.builder()
                 .sourcePrimary(SourceType.LH)
                 .sourceNoticeId("LH-1")
@@ -207,7 +241,7 @@ class AdminMarketPrepareServiceTest {
                 .fullAddress("경기도 김포시 마산동 1")
                 .regionLevel1("경기도")
                 .regionLevel2("김포시")
-                .houseTypeNormalized("아파트")
+                .houseTypeNormalized(houseTypeNormalized)
                 .exclusiveAreaValue(exclusiveArea)
                 .build();
         ReflectionTestUtils.setField(unit, "id", unitId);
