@@ -112,6 +112,14 @@ GET /api/announcements
 - `categories`
 - `page`
 - `size`
+- `sort`: `deadline`(기본값), `latest`, `deposit_asc`, `deposit_desc`
+
+### 정렬 옵션
+
+- `deadline` 또는 미지정: 신청 마감일 오름차순, 마감일 미확인 공고는 마지막
+- `latest`: 공고일 내림차순, 공고일 미확인 공고는 마지막
+- `deposit_asc`: 보증금 낮은순, 보증금 미확인 공고는 마지막
+- `deposit_desc`: 보증금 높은순, 보증금 미확인 공고는 마지막
 
 ### 예시 요청 1
 

@@ -20,6 +20,7 @@ import java.util.Locale;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.util.StringUtils;
 
 public class AnnouncementSearchRepositoryImpl implements AnnouncementSearchRepository {
@@ -37,7 +38,7 @@ public class AnnouncementSearchRepositoryImpl implements AnnouncementSearchRepos
 
         contentQuery.select(contentRoot)
                 .where(buildPredicates(criteriaBuilder, contentQuery, contentRoot, condition))
-                .orderBy(orderByApplicationEndDateNullsLast(criteriaBuilder, contentRoot));
+                .orderBy(resolveOrder(criteriaBuilder, contentRoot, pageable));
 
         TypedQuery<Announcement> query = entityManager.createQuery(contentQuery);
         if (pageable.isPaged()) {
@@ -259,14 +260,54 @@ public class AnnouncementSearchRepositoryImpl implements AnnouncementSearchRepos
         return criteriaBuilder.or(predicates.toArray(Predicate[]::new));
     }
 
-    private List<Order> orderByApplicationEndDateNullsLast(CriteriaBuilder criteriaBuilder, Root<Announcement> root) {
+    private List<Order> resolveOrder(CriteriaBuilder criteriaBuilder, Root<Announcement> root, Pageable pageable) {
+        Sort.Order primaryOrder = pageable.getSort().stream().findFirst().orElse(null);
+        if (primaryOrder == null) {
+            return orderByApplicationEndDateNullsLast(criteriaBuilder, root);
+        }
+
+        return switch (primaryOrder.getProperty()) {
+            case "announcementDate" -> orderByAnnouncementDateDescNullsLast(criteriaBuilder, root);
+            case "depositAmount" -> orderByDepositAmountNullsLast(criteriaBuilder, root, primaryOrder.getDirection());
+            default -> orderByApplicationEndDateNullsLast(criteriaBuilder, root);
+        };
+    }
+
+    private List<Order> orderByAnnouncementDateDescNullsLast(CriteriaBuilder criteriaBuilder, Root<Announcement> root) {
         return List.of(
-                criteriaBuilder.asc(criteriaBuilder.selectCase()
-                        .when(criteriaBuilder.isNull(root.get("applicationEndDate")), 1)
-                        .otherwise(0)),
+                nullsLast(criteriaBuilder, root, "announcementDate"),
+                criteriaBuilder.desc(root.get("announcementDate")),
+                criteriaBuilder.desc(root.get("id"))
+        );
+    }
+
+    private List<Order> orderByDepositAmountNullsLast(CriteriaBuilder criteriaBuilder,
+                                                      Root<Announcement> root,
+                                                      Sort.Direction direction) {
+        Order amountOrder = direction.isAscending()
+                ? criteriaBuilder.asc(root.get("depositAmount"))
+                : criteriaBuilder.desc(root.get("depositAmount"));
+        return List.of(
+                nullsLast(criteriaBuilder, root, "depositAmount"),
+                amountOrder,
+                nullsLast(criteriaBuilder, root, "applicationEndDate"),
                 criteriaBuilder.asc(root.get("applicationEndDate")),
                 criteriaBuilder.desc(root.get("id"))
         );
+    }
+
+    private List<Order> orderByApplicationEndDateNullsLast(CriteriaBuilder criteriaBuilder, Root<Announcement> root) {
+        return List.of(
+                nullsLast(criteriaBuilder, root, "applicationEndDate"),
+                criteriaBuilder.asc(root.get("applicationEndDate")),
+                criteriaBuilder.desc(root.get("id"))
+        );
+    }
+
+    private Order nullsLast(CriteriaBuilder criteriaBuilder, Root<Announcement> root, String property) {
+        return criteriaBuilder.asc(criteriaBuilder.selectCase()
+                .when(criteriaBuilder.isNull(root.get(property)), 1)
+                .otherwise(0));
     }
 
     private String likePattern(String value) {

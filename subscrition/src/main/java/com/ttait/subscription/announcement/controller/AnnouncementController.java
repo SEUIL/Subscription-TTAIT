@@ -7,6 +7,7 @@ import com.ttait.subscription.user.domain.enums.CategoryCode;
 import java.util.List;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -38,7 +39,8 @@ public class AnnouncementController {
             @RequestParam(required = false) Long maxMonthlyRent,
             @RequestParam(required = false) List<CategoryCode> categories,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(required = false) String sort
     ) {
         return announcementQueryService.getAnnouncements(
                 regionLevel1,
@@ -53,8 +55,18 @@ public class AnnouncementController {
                 minMonthlyRent,
                 maxMonthlyRent,
                 categories,
-                PageRequest.of(page, size)
+                PageRequest.of(page, size, resolveSort(sort))
         );
+    }
+
+    private Sort resolveSort(String sort) {
+        String value = sort == null ? "" : sort.trim();
+        return switch (value) {
+            case "latest" -> Sort.by(Sort.Direction.DESC, "announcementDate");
+            case "deposit_asc" -> Sort.by(Sort.Direction.ASC, "depositAmount");
+            case "deposit_desc" -> Sort.by(Sort.Direction.DESC, "depositAmount");
+            default -> Sort.unsorted();
+        };
     }
 
     @GetMapping("/{announcementId}")

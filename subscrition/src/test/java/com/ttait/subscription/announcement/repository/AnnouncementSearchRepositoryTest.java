@@ -22,6 +22,7 @@ import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 
 @DataJpaTest(properties = {
         "spring.datasource.url=jdbc:h2:mem:announcementsearchrepository;MODE=MySQL;DB_CLOSE_DELAY=-1;DATABASE_TO_LOWER=TRUE",
@@ -156,6 +157,89 @@ class AnnouncementSearchRepositoryTest {
                 .containsExactly("PAN-KEYWORD-002");
     }
 
+    @Test
+    @DisplayName("latest 정렬은 공고일 내림차순으로 조회한다")
+    void searchPublicVisibleSortsByLatestAnnouncementDate() {
+        saveVisible(announcement("PAN-SORT-OLD", "오래된 공고", "서울특별시", "강남구",
+                "국민임대", "아파트", AnnouncementStatus.OPEN, 1000L, 20L,
+                LocalDate.of(2026, 6, 1), LocalDate.of(2026, 5, 1)));
+        saveVisible(announcement("PAN-SORT-MID", "중간 공고", "서울특별시", "강남구",
+                "국민임대", "아파트", AnnouncementStatus.OPEN, 2000L, 20L,
+                LocalDate.of(2026, 6, 2), LocalDate.of(2026, 5, 5)));
+        saveVisible(announcement("PAN-SORT-NEW", "최신 공고", "서울특별시", "강남구",
+                "국민임대", "아파트", AnnouncementStatus.OPEN, 3000L, 20L,
+                LocalDate.of(2026, 6, 3), LocalDate.of(2026, 5, 10)));
+
+        Page<Announcement> page = announcementRepository.searchPublicVisible(
+                condition(null, null, null, null, null, null, null, null, null, null, null, null),
+                PageRequest.of(0, 10, Sort.by(Sort.Direction.DESC, "announcementDate")));
+
+        assertThat(page.getContent()).extracting(Announcement::getSourceNoticeId)
+                .containsExactly("PAN-SORT-NEW", "PAN-SORT-MID", "PAN-SORT-OLD");
+    }
+
+    @Test
+    @DisplayName("depositAmount 오름차순 정렬은 금액 미확인 공고를 마지막에 둔다")
+    void searchPublicVisibleSortsByDepositAscendingWithNullsLast() {
+        saveVisible(announcement("PAN-DEPOSIT-NULL", "보증금 미확인", "서울특별시", "강남구",
+                "국민임대", "아파트", AnnouncementStatus.OPEN, null, 20L,
+                LocalDate.of(2026, 6, 1)));
+        saveVisible(announcement("PAN-DEPOSIT-HIGH", "보증금 높음", "서울특별시", "강남구",
+                "국민임대", "아파트", AnnouncementStatus.OPEN, 3000L, 20L,
+                LocalDate.of(2026, 6, 2)));
+        saveVisible(announcement("PAN-DEPOSIT-LOW", "보증금 낮음", "서울특별시", "강남구",
+                "국민임대", "아파트", AnnouncementStatus.OPEN, 1000L, 20L,
+                LocalDate.of(2026, 6, 3)));
+
+        Page<Announcement> page = announcementRepository.searchPublicVisible(
+                condition(null, null, null, null, null, null, null, null, null, null, null, null),
+                PageRequest.of(0, 10, Sort.by(Sort.Direction.ASC, "depositAmount")));
+
+        assertThat(page.getContent()).extracting(Announcement::getSourceNoticeId)
+                .containsExactly("PAN-DEPOSIT-LOW", "PAN-DEPOSIT-HIGH", "PAN-DEPOSIT-NULL");
+    }
+
+    @Test
+    @DisplayName("depositAmount 내림차순 정렬은 금액 미확인 공고를 마지막에 둔다")
+    void searchPublicVisibleSortsByDepositDescendingWithNullsLast() {
+        saveVisible(announcement("PAN-DEPOSIT-NULL", "보증금 미확인", "서울특별시", "강남구",
+                "국민임대", "아파트", AnnouncementStatus.OPEN, null, 20L,
+                LocalDate.of(2026, 6, 1)));
+        saveVisible(announcement("PAN-DEPOSIT-HIGH", "보증금 높음", "서울특별시", "강남구",
+                "국민임대", "아파트", AnnouncementStatus.OPEN, 3000L, 20L,
+                LocalDate.of(2026, 6, 2)));
+        saveVisible(announcement("PAN-DEPOSIT-LOW", "보증금 낮음", "서울특별시", "강남구",
+                "국민임대", "아파트", AnnouncementStatus.OPEN, 1000L, 20L,
+                LocalDate.of(2026, 6, 3)));
+
+        Page<Announcement> page = announcementRepository.searchPublicVisible(
+                condition(null, null, null, null, null, null, null, null, null, null, null, null),
+                PageRequest.of(0, 10, Sort.by(Sort.Direction.DESC, "depositAmount")));
+
+        assertThat(page.getContent()).extracting(Announcement::getSourceNoticeId)
+                .containsExactly("PAN-DEPOSIT-HIGH", "PAN-DEPOSIT-LOW", "PAN-DEPOSIT-NULL");
+    }
+
+    @Test
+    @DisplayName("정렬 파라미터가 없으면 기존 마감일 오름차순과 null last를 유지한다")
+    void searchPublicVisibleKeepsDefaultDeadlineOrderWhenUnsorted() {
+        saveVisible(announcement("PAN-DEADLINE-NULL", "마감일 없음", "서울특별시", "강남구",
+                "국민임대", "아파트", AnnouncementStatus.OPEN, 1000L, 20L, null));
+        saveVisible(announcement("PAN-DEADLINE-LATE", "마감일 늦음", "서울특별시", "강남구",
+                "국민임대", "아파트", AnnouncementStatus.OPEN, 1000L, 20L,
+                LocalDate.of(2026, 6, 5)));
+        saveVisible(announcement("PAN-DEADLINE-EARLY", "마감일 빠름", "서울특별시", "강남구",
+                "국민임대", "아파트", AnnouncementStatus.OPEN, 1000L, 20L,
+                LocalDate.of(2026, 6, 1)));
+
+        Page<Announcement> page = announcementRepository.searchPublicVisible(
+                condition(null, null, null, null, null, null, null, null, null, null, null, null),
+                PageRequest.of(0, 10));
+
+        assertThat(page.getContent()).extracting(Announcement::getSourceNoticeId)
+                .containsExactly("PAN-DEADLINE-EARLY", "PAN-DEADLINE-LATE", "PAN-DEADLINE-NULL");
+    }
+
     private Announcement saveVisible(Announcement announcement) {
         Announcement saved = announcementRepository.save(announcement);
         AnnouncementEligibility eligibility = AnnouncementEligibility.builder()
@@ -223,7 +307,23 @@ class AnnouncementSearchRepositoryTest {
                                       Long monthlyRentAmount,
                                       LocalDate applicationEndDate) {
         return announcement(sourceNoticeId, noticeName, regionLevel1, regionLevel2, supplyType, houseType, houseType,
-                status, depositAmount, monthlyRentAmount, applicationEndDate);
+                status, depositAmount, monthlyRentAmount, applicationEndDate,
+                defaultAnnouncementDate(applicationEndDate));
+    }
+
+    private Announcement announcement(String sourceNoticeId,
+                                      String noticeName,
+                                      String regionLevel1,
+                                      String regionLevel2,
+                                      String supplyType,
+                                      String houseType,
+                                      AnnouncementStatus status,
+                                      Long depositAmount,
+                                      Long monthlyRentAmount,
+                                      LocalDate applicationEndDate,
+                                      LocalDate announcementDate) {
+        return announcement(sourceNoticeId, noticeName, regionLevel1, regionLevel2, supplyType, houseType, houseType,
+                status, depositAmount, monthlyRentAmount, applicationEndDate, announcementDate);
     }
 
     private Announcement announcement(String sourceNoticeId,
@@ -237,6 +337,23 @@ class AnnouncementSearchRepositoryTest {
                                       Long depositAmount,
                                       Long monthlyRentAmount,
                                       LocalDate applicationEndDate) {
+        return announcement(sourceNoticeId, noticeName, regionLevel1, regionLevel2, supplyType, houseTypeRaw,
+                houseTypeNormalized, status, depositAmount, monthlyRentAmount,
+                applicationEndDate, defaultAnnouncementDate(applicationEndDate));
+    }
+
+    private Announcement announcement(String sourceNoticeId,
+                                      String noticeName,
+                                      String regionLevel1,
+                                      String regionLevel2,
+                                      String supplyType,
+                                      String houseTypeRaw,
+                                      String houseTypeNormalized,
+                                      AnnouncementStatus status,
+                                      Long depositAmount,
+                                      Long monthlyRentAmount,
+                                      LocalDate applicationEndDate,
+                                      LocalDate announcementDate) {
         return Announcement.builder()
                 .sourcePrimary(SourceType.LH)
                 .sourceNoticeId(sourceNoticeId)
@@ -244,6 +361,7 @@ class AnnouncementSearchRepositoryTest {
                 .providerName("LH")
                 .sourceNoticeUrl("https://example.com/notice/" + sourceNoticeId)
                 .noticeStatus(status)
+                .announcementDate(announcementDate)
                 .regionLevel1(regionLevel1)
                 .regionLevel2(regionLevel2)
                 .fullAddress(regionLevel1 + " " + regionLevel2 + " 테스트로")
@@ -259,5 +377,9 @@ class AnnouncementSearchRepositoryTest {
                 .merged(false)
                 .collectedAt(LocalDateTime.of(2026, 5, 21, 9, 0))
                 .build();
+    }
+
+    private LocalDate defaultAnnouncementDate(LocalDate applicationEndDate) {
+        return applicationEndDate == null ? null : applicationEndDate.minusMonths(1);
     }
 }

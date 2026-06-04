@@ -133,6 +133,7 @@ export default function AnnouncementsPage() {
       const params = new URLSearchParams();
       params.set('page', String(page - 1));
       params.set('size', '12');
+      if (sort && sort !== 'deadline') params.set('sort', sort);
       if (keyword) params.set('keyword', keyword);
       if (filters.regionLevel1) params.set('regionLevel1', filters.regionLevel1);
       if (filters.regionLevel2) params.set('regionLevel2', filters.regionLevel2);

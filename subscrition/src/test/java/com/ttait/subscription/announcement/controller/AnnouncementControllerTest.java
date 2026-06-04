@@ -1,6 +1,9 @@
 package com.ttait.subscription.announcement.controller;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.then;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -27,10 +30,14 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
+import org.mockito.ArgumentCaptor;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
@@ -92,6 +99,24 @@ class AnnouncementControllerTest {
                 .andExpect(jsonPath("$.units[0].latitude").value(37.5665))
                 .andExpect(jsonPath("$.units[0].longitude").value(126.978))
                 .andExpect(jsonPath("$.units[0].geocodeStatus").value("SUCCESS"));
+    }
+
+    @Test
+    void getAnnouncementsMapsLatestSortToAnnouncementDateDescending() throws Exception {
+        given(announcementRepository.searchPublicVisible(any(), any(Pageable.class)))
+                .willReturn(new PageImpl<>(List.of(), Pageable.ofSize(10), 0));
+
+        mockMvc.perform(get("/api/announcements")
+                        .param("sort", "latest")
+                        .param("page", "0")
+                        .param("size", "10"))
+                .andExpect(status().isOk());
+
+        ArgumentCaptor<Pageable> pageableCaptor = ArgumentCaptor.forClass(Pageable.class);
+        then(announcementRepository).should().searchPublicVisible(any(), pageableCaptor.capture());
+        Sort.Order order = pageableCaptor.getValue().getSort().getOrderFor("announcementDate");
+        assertThat(order).isNotNull();
+        assertThat(order.getDirection()).isEqualTo(Sort.Direction.DESC);
     }
 
     private Announcement announcement() {
