@@ -165,6 +165,7 @@ ui_kits/
   web/
     README.md
     index.html                 ← Main listing (interactive prototype)
+    admin_market_readiness_handoff.html ← 주변시세 readiness/prepare 정적 프로토타입
     Header.jsx
     FilterBar.jsx
     ListingCard.jsx
@@ -185,3 +186,17 @@ ui_kits/
 | `ui_kits/web/ADMIN_LH_IMPORT_HANDOFF.md` | 다음 프론트 작업자용 이식 메모 |
 
 확인 URL: 로컬 서버 실행 후 `http://localhost:8000/ui_kits/web/admin_handoff.html`
+
+## 주변시세 readiness / prepare 디자인 핸드오프
+
+백엔드 `AdminMarketReadinessController`, `AdminMarketPrepareController`, `MarketReadinessResponse`, `MarketPrepareRequest`, `MarketPrepareResponse`, `AdminAnnouncementUnitResponse` 기준으로 시세비교 준비 상태 UI를 설계했습니다.
+
+| 파일 | 설명 |
+|---|---|
+| `ui_kits/web/admin_market_readiness_handoff.html` | 관리자 readiness 조회, prepare 실행, 일반 상세 시세비교 상태 카드를 확인하는 프로토타입 |
+| `ui_kits/web/AdminMarketReadinessSection.jsx` | 프론트 이식용 React 목업 컴포넌트 |
+| `ui_kits/web/ADMIN_MARKET_READINESS_HANDOFF.md` | 프론트팀 전달용 API/상태/결정사항 메모 |
+
+확인 URL:
+- repo root에서 서버 실행 시 `http://localhost:8000/ttait_Front/ui_kits/web/admin_market_readiness_handoff.html`
+- `ttait_Front`에서 서버 실행 시 `http://localhost:8000/ui_kits/web/admin_market_readiness_handoff.html`

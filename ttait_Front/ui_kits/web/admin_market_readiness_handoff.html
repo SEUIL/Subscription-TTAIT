@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>집구해 — 주변시세 readiness / prepare 디자인</title>
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" crossorigin="anonymous"></script>
+  <style>
+    @font-face {
+      font-family: 'Noto Sans KR';
+      src: url('../../fonts/NotoSansKR-VariableFont_wght.ttf') format('truetype');
+      font-weight: 100 900;
+      font-style: normal;
+      font-display: swap;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Noto Sans KR', -apple-system, system-ui, sans-serif; background: #f2f2f2; }
+    .file-warning { display: none; margin: 24px auto; padding: 18px 20px; max-width: 760px; border-radius: 16px; background: #fff0f3; color: #222; line-height: 1.6; }
+  </style>
+</head>
+<body>
+  <div id="file-warning" class="file-warning">
+    <strong>로컬 서버로 실행해야 합니다.</strong><br />
+    이 파일은 React/Babel로 JSX 파일을 불러오므로 더블클릭(file://) 실행 시 빈 화면이 날 수 있습니다.
+    repo root에서 실행했다면 <code>http://localhost:8000/ttait_Front/ui_kits/web/admin_market_readiness_handoff.html</code>,
+    ttait_Front 폴더에서 실행했다면 <code>http://localhost:8000/ui_kits/web/admin_market_readiness_handoff.html</code>로 접속하세요.
+  </div>
+  <div id="root"></div>
+  <script>
+    if (location.protocol === 'file:') {
+      document.getElementById('file-warning').style.display = 'block';
+    }
+  </script>
+  <script type="text/babel" src="AdminMarketReadinessSection.jsx"></script>
+  <script type="text/babel">
+    ReactDOM.createRoot(document.getElementById('root')).render(<AdminMarketReadinessPage />);
+  </script>
+</body>
+</html>
