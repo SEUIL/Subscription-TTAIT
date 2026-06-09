@@ -25,11 +25,6 @@ public class DeadlineEmailService {
 
     private static final Logger log = LoggerFactory.getLogger(DeadlineEmailService.class);
 
-    private static final List<ParseReviewStatus> PUBLIC_VISIBLE_REVIEW_STATUSES = List.of(
-            ParseReviewStatus.APPROVED,
-            ParseReviewStatus.CORRECTED
-    );
-
     private static final Map<Integer, EmailNotificationType> DEADLINE_DAYS = Map.of(
         7, EmailNotificationType.DEADLINE_7,
         3, EmailNotificationType.DEADLINE_3,
@@ -54,7 +49,7 @@ public class DeadlineEmailService {
     public void sendFor(User user, LocalDate today) {
         List<UserFavoriteAnnouncement> favorites = favoriteRepository.findActiveByUserId(
                 user.getId(),
-                PUBLIC_VISIBLE_REVIEW_STATUSES);
+                ParseReviewStatus.publicVisibleStatuses());
         if (favorites.isEmpty()) {
             return;
         }

@@ -9,7 +9,6 @@ import com.ttait.subscription.announcement.repository.AnnouncementRepository;
 import com.ttait.subscription.common.exception.ApiException;
 import com.ttait.subscription.user.domain.UserProfile;
 import com.ttait.subscription.user.repository.UserProfileRepository;
-import java.util.List;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -17,11 +16,6 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @Transactional(readOnly = true)
 public class EligibilityChecklistService {
-
-    private static final List<ParseReviewStatus> PUBLIC_VISIBLE_REVIEW_STATUSES = List.of(
-            ParseReviewStatus.APPROVED,
-            ParseReviewStatus.CORRECTED
-    );
 
     private final UserProfileRepository userProfileRepository;
     private final AnnouncementRepository announcementRepository;
@@ -41,7 +35,7 @@ public class EligibilityChecklistService {
     public EligibilityChecklistResponse getChecklist(Long userId, Long announcementId) {
         UserProfile profile = userProfileRepository.findByUserIdAndDeletedFalse(userId)
                 .orElseThrow(() -> new ApiException(HttpStatus.BAD_REQUEST, "profile setup required"));
-        Announcement announcement = announcementRepository.findPublicVisibleById(announcementId, PUBLIC_VISIBLE_REVIEW_STATUSES)
+        Announcement announcement = announcementRepository.findPublicVisibleById(announcementId, ParseReviewStatus.publicVisibleStatuses())
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "announcement not found"));
         AnnouncementEligibility eligibility = announcementEligibilityRepository.findByAnnouncementId(announcementId)
                 .orElse(null);

@@ -32,11 +32,6 @@ import org.springframework.util.StringUtils;
 @Transactional(readOnly = true)
 public class AnnouncementQueryService {
 
-    private static final List<ParseReviewStatus> PUBLIC_VISIBLE_REVIEW_STATUSES = List.of(
-            ParseReviewStatus.APPROVED,
-            ParseReviewStatus.CORRECTED
-    );
-
     private final AnnouncementRepository announcementRepository;
     private final AnnouncementDetailRepository announcementDetailRepository;
     private final AnnouncementCategoryRepository announcementCategoryRepository;
@@ -85,7 +80,7 @@ public class AnnouncementQueryService {
                 minMonthlyRent,
                 maxMonthlyRent,
                 categories,
-                PUBLIC_VISIBLE_REVIEW_STATUSES
+                        ParseReviewStatus.publicVisibleStatuses()
         );
 
         return announcementRepository.searchPublicVisible(condition, pageable)
@@ -96,7 +91,7 @@ public class AnnouncementQueryService {
     public AnnouncementDetailResponse getAnnouncementDetail(Long announcementId) {
         Announcement announcement = announcementRepository.findPublicVisibleById(
                         announcementId,
-                        PUBLIC_VISIBLE_REVIEW_STATUSES)
+                        ParseReviewStatus.publicVisibleStatuses())
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "announcement not found"));
         AnnouncementDetail detail = announcementDetailRepository.findByAnnouncementIdAndDeletedFalse(announcementId)
                 .orElse(null);
@@ -111,15 +106,15 @@ public class AnnouncementQueryService {
 
     public FilterOptionResponse regionLevel1Options() {
         return new FilterOptionResponse(
-                announcementRepository.findDistinctPublicVisibleRegionLevel1(PUBLIC_VISIBLE_REVIEW_STATUSES));
+                announcementRepository.findDistinctPublicVisibleRegionLevel1(ParseReviewStatus.publicVisibleStatuses()));
     }
 
     public FilterOptionResponse regionLevel2Options(String regionLevel1) {
         List<Announcement> announcements = StringUtils.hasText(regionLevel1)
                 ? announcementRepository.findPublicVisibleByRegionLevel1IgnoreCase(
                         regionLevel1,
-                        PUBLIC_VISIBLE_REVIEW_STATUSES)
-                : announcementRepository.findPublicVisible(PUBLIC_VISIBLE_REVIEW_STATUSES, Pageable.unpaged())
+                        ParseReviewStatus.publicVisibleStatuses())
+                : announcementRepository.findPublicVisible(ParseReviewStatus.publicVisibleStatuses(), Pageable.unpaged())
                         .getContent();
 
         List<String> items = announcements.stream()
@@ -134,11 +129,11 @@ public class AnnouncementQueryService {
 
     public FilterOptionResponse supplyTypeOptions() {
         return new FilterOptionResponse(
-                announcementRepository.findDistinctPublicVisibleSupplyTypes(PUBLIC_VISIBLE_REVIEW_STATUSES));
+                announcementRepository.findDistinctPublicVisibleSupplyTypes(ParseReviewStatus.publicVisibleStatuses()));
     }
 
     public FilterOptionResponse houseTypeOptions() {
-        List<String> items = announcementRepository.findPublicVisible(PUBLIC_VISIBLE_REVIEW_STATUSES, Pageable.unpaged())
+        List<String> items = announcementRepository.findPublicVisible(ParseReviewStatus.publicVisibleStatuses(), Pageable.unpaged())
                 .getContent()
                 .stream()
                 .map(this::resolveHouseType)
@@ -151,7 +146,7 @@ public class AnnouncementQueryService {
 
     public FilterOptionResponse providerOptions() {
         return new FilterOptionResponse(
-                announcementRepository.findDistinctPublicVisibleProviders(PUBLIC_VISIBLE_REVIEW_STATUSES));
+                announcementRepository.findDistinctPublicVisibleProviders(ParseReviewStatus.publicVisibleStatuses()));
     }
 
     public CategoryFilterOptionResponse categoryOptions() {
