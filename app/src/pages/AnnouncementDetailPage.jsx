@@ -23,8 +23,8 @@ const S = {
   infoItem: { padding: '13px 0', borderBottom: '1px solid rgba(0,0,0,0.06)', display: 'flex', alignItems: 'flex-start', gap: 12 },
   infoLabel: { fontSize: 13, color: '#6a6a6a', fontWeight: 400, minWidth: 80, flexShrink: 0, paddingTop: 2 },
   infoValue: { fontSize: 14, color: '#222', fontWeight: 500, lineHeight: 1.5 },
-  unitGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 16 },
-  unitCard: { background: '#fff', border: '1px solid rgba(0,0,0,0.08)', borderRadius: 16, padding: 18 },
+  unitGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 16 },
+  unitCard: { background: '#fff', border: '1px solid rgba(0,0,0,0.08)', borderRadius: 16, padding: 20 },
   unitBadge: { display: 'inline-flex', alignItems: 'center', borderRadius: 999, padding: '5px 10px', background: '#fff0f3', color: '#ff385c', fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap' },
   unitMeta: { display: 'flex', justifyContent: 'space-between', gap: 12, padding: '8px 0', borderBottom: '1px solid rgba(0,0,0,0.04)' },
   stickyCard: {
@@ -573,8 +573,7 @@ const LocationInfoSection = ({ sectionTitleStyle, announcementName, announcement
 
         <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', gap: 16, alignItems: 'center', padding: 20 }}>
           <div>
-            <p style={{ fontSize: 13, color: '#6a6a6a', marginBottom: 4 }}>{title}</p>
-            <p style={{ fontSize: 15, fontWeight: 600, color: '#222', lineHeight: 1.55 }}>{address || '주소 정보 없음'}</p>
+            <p style={{ fontSize: 14, fontWeight: 500, color: '#222', lineHeight: 1.55 }}>{address || '주소 정보 없음'}</p>
           </div>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
             {naverMapUrl && (
@@ -592,11 +591,11 @@ const LocationInfoSection = ({ sectionTitleStyle, announcementName, announcement
 
         {visibleUnits.length > 0 && (
           <div style={{ borderTop: '1px solid rgba(0,0,0,0.06)', padding: 16, background: '#fafafa' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 10 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 10 }}>
               {visibleUnits.map((unit, index) => (
-                <div key={getLocationUnitKey(unit, index)} style={{ border: '1px solid rgba(0,0,0,0.08)', borderRadius: 14, padding: 12, background: representativeUnit === unit ? '#fff8f9' : '#fff' }}>
-                  <p style={{ fontSize: 13, fontWeight: 800, color: '#222', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginBottom: 8 }}>{unit.complexName}</p>
-                  <p style={{ fontSize: 12, color: '#6a6a6a', lineHeight: 1.45, minHeight: 34 }}>{unit.fullAddress || '주소 정보 없음'}</p>
+                <div key={getLocationUnitKey(unit, index)} style={{ border: '1px solid rgba(0,0,0,0.08)', borderRadius: 14, padding: 12, background: representativeUnit === unit ? '#fff8f9' : '#fff', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                  <p style={{ fontSize: 13, fontWeight: 700, color: '#222', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginBottom: 8 }}>{unit.complexName}</p>
+                  <p style={{ fontSize: 12, color: '#6a6a6a', lineHeight: 1.45 }}>{unit.fullAddress || '주소 정보 없음'}</p>
                 </div>
               ))}
             </div>
@@ -689,13 +688,13 @@ const MarketMetricCard = ({ definition, metric }) => {
   const ratioLabel = ratio != null ? `${Math.round(ratio)}%${isAboveMarket ? ' 이상' : ''}` : '확인 중';
 
   return (
-    <div style={{ border: '1px solid rgba(0,0,0,0.08)', borderRadius: 18, padding: 18, background: '#fff', minWidth: 0, boxShadow: 'rgba(0,0,0,0.025) 0px 8px 22px' }}>
+    <div style={{ border: '1px solid rgba(0,0,0,0.08)', borderRadius: 18, padding: 20, background: '#fff', minWidth: 0, boxShadow: 'rgba(0,0,0,0.025) 0px 8px 22px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, marginBottom: 14 }}>
         <p style={{ fontSize: 15, fontWeight: 800, color: '#222' }}>{definition.label}</p>
         <span style={{ width: 10, height: 10, borderRadius: 999, background: definition.accent, flexShrink: 0 }} />
       </div>
 
-      <div style={{ display: 'grid', gap: 10, marginBottom: 16 }}>
+      <div style={{ display: 'grid', gap: 8, marginBottom: 14 }}>
         {[
           [definition.marketLabel, formatMarketAmount(metric.marketAmount), '#6a6a6a'],
           [definition.unitLabel, formatMarketAmount(metric.unitAmount), '#222'],
@@ -707,17 +706,17 @@ const MarketMetricCard = ({ definition, metric }) => {
         ))}
       </div>
 
-      <div style={{ marginBottom: 12 }}>
+      <div style={{ marginBottom: 10 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, marginBottom: 7 }}>
           <span style={{ fontSize: 12, color: '#6a6a6a' }}>공고/주변 비율</span>
           <span style={{ fontSize: 12, fontWeight: 800, color: definition.accent }}>{ratioLabel}</span>
         </div>
-        <div style={{ height: 9, borderRadius: 999, background: '#f2f2f2', overflow: 'hidden' }}>
+        <div style={{ height: 7, borderRadius: 999, background: '#f2f2f2', overflow: 'hidden' }}>
           <div style={{ width: `${ratio ?? 0}%`, height: '100%', borderRadius: 999, background: definition.accent, transition: 'width 0.25s ease' }} />
         </div>
       </div>
 
-      <p style={{ fontSize: 13, color: '#222', lineHeight: 1.6, fontWeight: 600 }}>{getMarketMetricInterpretation(definition, metric)}</p>
+      <p style={{ fontSize: 12, color: '#222', lineHeight: 1.6, fontWeight: 500 }}>{getMarketMetricInterpretation(definition, metric)}</p>
     </div>
   );
 };
@@ -754,7 +753,7 @@ const MarketComparisonSection = ({ sectionTitleStyle, announcement, units, selec
       {selectableUnits.length === 0 ? (
         <MarketComparisonFallback message="공급 단위 정보가 없어 시세 비교를 준비하기 어렵습니다." />
       ) : (
-        <div style={{ borderRadius: 22, padding: 20, background: 'linear-gradient(135deg, #fff 0%, #fff8f9 56%, #f7fbff 100%)', border: '1px solid rgba(0,0,0,0.08)', boxShadow: 'rgba(0,0,0,0.03) 0px 12px 30px', minWidth: 0 }}>
+        <div style={{ borderRadius: 22, padding: 20, background: '#fff', border: '1px solid rgba(0,0,0,0.08)', boxShadow: 'rgba(0,0,0,0.03) 0px 12px 30px', minWidth: 0 }}>
           <MarketUnitSelector units={selectableUnits} selectedUnitId={selectedUnit?.unitId} onSelect={onSelectUnit} />
 
           {loading && !normalizedComparison ? (
@@ -780,10 +779,10 @@ const MarketComparisonSection = ({ sectionTitleStyle, announcement, units, selec
           ) : (
             <>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16, alignItems: 'stretch', marginBottom: 16 }}>
-                <div style={{ borderRadius: 18, padding: 20, background: '#222', color: '#fff', minWidth: 0, overflow: 'hidden', position: 'relative' }}>
-                  <div style={{ position: 'absolute', right: -44, top: -54, width: 150, height: 150, borderRadius: '50%', background: 'rgba(255,56,92,0.32)' }} />
-                  <p style={{ fontSize: 12, fontWeight: 800, color: 'rgba(255,255,255,0.68)', marginBottom: 10 }}>한눈에 보기</p>
-                  <p style={{ position: 'relative', fontSize: 21, fontWeight: 800, lineHeight: 1.45, letterSpacing: '-0.4px' }}>{getMarketMetricInterpretation(summaryMetric.definition, summaryMetric.metric)}</p>
+                <div style={{ borderRadius: 18, padding: 20, background: '#fff', color: '#222', minWidth: 0, overflow: 'hidden', position: 'relative', border: '1px solid rgba(0,0,0,0.08)' }}>
+                  <div style={{ position: 'absolute', right: -44, top: -54, width: 150, height: 150, borderRadius: '50%', background: 'rgba(255,56,92,0.08)' }} />
+                  <p style={{ fontSize: 12, fontWeight: 800, color: '#6a6a6a', marginBottom: 10 }}>한눈에 보기</p>
+                  <p style={{ position: 'relative', fontSize: 18, fontWeight: 700, lineHeight: 1.45, letterSpacing: '-0.4px', color: '#222' }}>{getMarketMetricInterpretation(summaryMetric.definition, summaryMetric.metric)}</p>
                 </div>
                 <MarketSupportInfo items={supportItems} />
               </div>
@@ -1123,7 +1122,7 @@ export default function AnnouncementDetailPage() {
                       ['월세', amount(unit.monthlyRentAmount)],
                       ['분양가', salePrice(unit)],
                       ['공급세대수', unit.supplyHouseholdCount != null ? `${unit.supplyHouseholdCount} 세대` : '-'],
-                    ].map(([label, value]) => (
+                    ].filter(([, value]) => value !== '-').map(([label, value]) => (
                       <div key={label} style={S.unitMeta}>
                         <span style={{ fontSize: 12, color: '#6a6a6a', flexShrink: 0 }}>{label}</span>
                         <span style={{ fontSize: 13, color: '#222', fontWeight: 600, textAlign: 'right' }}>{value}</span>
