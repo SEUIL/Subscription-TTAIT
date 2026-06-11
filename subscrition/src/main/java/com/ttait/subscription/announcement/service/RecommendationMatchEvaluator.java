@@ -245,11 +245,11 @@ public class RecommendationMatchEvaluator {
         }
         if (announcementAmount <= userMaxAmount) {
             return factor(key, "비용", label, RecommendationFactorStatus.STRONG_MATCH, "추천 점수에 긍정적",
-                    "공고 " + label + "이 저장된 예산 범위 안에 있습니다.", moneyValue(userMaxAmount),
+                    "공고 " + label + "이(가) 저장된 예산 범위 안에 있습니다.", moneyValue(userMaxAmount),
                     moneyValue(announcementAmount), null, "NONE");
         }
         return factor(key, "비용", label, RecommendationFactorStatus.NOT_MATCHED, "추천 제외 조건",
-                "공고 " + label + "이 저장된 예산을 초과합니다.", moneyValue(userMaxAmount), moneyValue(announcementAmount),
+                "공고 " + label + "이(가) 저장된 예산을 초과합니다.", moneyValue(userMaxAmount), moneyValue(announcementAmount),
                 "공고 원문 확인", "OFFICIAL_NOTICE");
     }
 

@@ -61,6 +61,36 @@ const MARKET_STATUS_MESSAGES = {
   FAILED: '시세 정보를 불러오지 못했습니다.',
 };
 
+const CHECK_STATUS_COLOR = {
+  MET: '#22C55E',
+  NOT_MET: '#EF4444',
+  NEEDS_VERIFICATION: '#F97316',
+  NOT_APPLICABLE: '#9ca3af',
+};
+
+const CHECK_STATUS_ICON = {
+  MET: '✓',
+  NOT_MET: '✗',
+  NEEDS_VERIFICATION: '!',
+  NOT_APPLICABLE: '−',
+};
+
+const CHECK_STATUS_LABEL = {
+  MET: '충족',
+  NOT_MET: '미충족',
+  NEEDS_VERIFICATION: '확인 필요',
+  NOT_APPLICABLE: '해당 없음',
+};
+
+const CHECK_GROUP_ORDER = ['기본 자격', '가구 조건', '주택 보유', '소득·자산', '비용', '일정'];
+
+const SUMMARY_STATUS_COLOR = {
+  LIKELY_READY: '#22C55E',
+  REVIEW_REQUIRED: '#F59E0B',
+  HAS_BLOCKERS: '#EF4444',
+  INSUFFICIENT_DATA: '#9ca3af',
+};
+
 const EMBEDDED_MARKET_STATUS_MAP = {
   AVAILABLE: 'COMPARABLE',
   NOT_REQUESTED: 'NOT_REQUESTED',
@@ -515,6 +545,154 @@ const NaverLocationMap = ({ unit, title, address }) => {
   );
 };
 
+const EligibilityChecklist = ({ checklist }) => {
+  const summaryColor = SUMMARY_STATUS_COLOR[checklist.summaryStatus] || '#6a6a6a';
+
+  const grouped = {};
+  (checklist.items || []).forEach(item => {
+    const g = item.group || 'DOCUMENT';
+    if (!grouped[g]) grouped[g] = [];
+    grouped[g].push(item);
+  });
+
+  const visibleGroups = CHECK_GROUP_ORDER.filter(g => grouped[g]?.length > 0);
+  const [openGroups, setOpenGroups] = useState(() => new Set());
+
+  const toggleGroup = (key) => {
+    setOpenGroups(prev => {
+      const next = new Set(prev);
+      next.has(key) ? next.delete(key) : next.add(key);
+      return next;
+    });
+  };
+
+  return (
+    <div style={{ marginBottom: 32 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: 16, marginBottom: 16, paddingBottom: 12, borderBottom: '1px solid rgba(0,0,0,0.08)' }}>
+        <div>
+          <h2 style={{ fontSize: 20, fontWeight: 700, color: '#222', letterSpacing: '-0.3px', marginBottom: 4 }}>내 조건 충족도</h2>
+          <p style={{ fontSize: 13, color: '#6a6a6a' }}>저장된 프로필과 공고 조건을 기준으로 체크한 참고 결과입니다.</p>
+        </div>
+      </div>
+
+      <div style={{
+        padding: '14px 18px', borderRadius: 14, marginBottom: 16,
+        background: summaryColor + '15', border: `1px solid ${summaryColor}30`,
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap',
+      }}>
+        <div>
+          <p style={{ fontSize: 14, fontWeight: 700, color: summaryColor }}>{checklist.summaryMessage}</p>
+        </div>
+        <div style={{ display: 'flex', gap: 12, flexShrink: 0 }}>
+          <span style={{ fontSize: 12, color: '#22C55E', fontWeight: 700 }}>충족 {checklist.metCount}개</span>
+          {checklist.notMetCount > 0 && <span style={{ fontSize: 12, color: '#EF4444', fontWeight: 700 }}>미충족 {checklist.notMetCount}개</span>}
+          {checklist.needsVerificationCount > 0 && <span style={{ fontSize: 12, color: '#F97316', fontWeight: 700 }}>확인 필요 {checklist.needsVerificationCount}개</span>}
+        </div>
+      </div>
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {visibleGroups.map(groupKey => {
+          const isOpen = openGroups.has(groupKey);
+          const items = grouped[groupKey];
+          const hasBlocker = items.some(i => i.status === 'NOT_MET');
+          const hasWarning = !hasBlocker && items.some(i => i.status === 'NEEDS_VERIFICATION');
+          const headerAccent = hasBlocker ? '#EF4444' : hasWarning ? '#F97316' : '#22C55E';
+          return (
+            <div key={groupKey} style={{ background: '#fff', borderRadius: 14, border: '1px solid rgba(0,0,0,0.07)', overflow: 'hidden' }}>
+              <button
+                onClick={() => toggleGroup(groupKey)}
+                style={{
+                  width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  padding: '13px 18px', background: '#f9fafb', border: 'none', cursor: 'pointer',
+                  borderBottom: isOpen ? '1px solid rgba(0,0,0,0.06)' : 'none',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ width: 6, height: 6, borderRadius: '50%', background: headerAccent, flexShrink: 0 }} />
+                  <span style={{ fontSize: 13, fontWeight: 700, color: '#222' }}>{groupKey}</span>
+                  <span style={{ fontSize: 11, color: '#9ca3af' }}>{items.length}개 항목</span>
+                </div>
+                <span style={{ fontSize: 12, color: '#9ca3af', transition: 'transform 0.2s', display: 'inline-block', transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)' }}>▼</span>
+              </button>
+              {isOpen && (
+                <div>
+                  {items.map((item, idx) => {
+                    const statusColor = CHECK_STATUS_COLOR[item.status] || '#9ca3af';
+                    const isBlocker = item.status === 'NOT_MET';
+                    return (
+                      <div key={item.key || idx} style={{
+                        padding: '13px 18px',
+                        borderBottom: idx < items.length - 1 ? '1px solid rgba(0,0,0,0.05)' : 'none',
+                        background: isBlocker ? '#fff8f8' : '#fff',
+                      }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: item.reason ? 4 : 0 }}>
+                              <span style={{
+                                width: 22, height: 22, borderRadius: '50%', flexShrink: 0,
+                                background: statusColor + '20', color: statusColor,
+                                display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                                fontSize: 11, fontWeight: 800,
+                              }}>
+                                {CHECK_STATUS_ICON[item.status] || '?'}
+                              </span>
+                              <span style={{ fontSize: 14, fontWeight: 600, color: '#222' }}>{item.label}</span>
+                              <span style={{
+                                fontSize: 11, fontWeight: 700, padding: '2px 7px', borderRadius: 999,
+                                background: statusColor + '18', color: statusColor, flexShrink: 0,
+                              }}>
+                                {CHECK_STATUS_LABEL[item.status] || item.status}
+                              </span>
+                            </div>
+                            {item.reason && (
+                              <p style={{ fontSize: 12, color: '#6a6a6a', paddingLeft: 30, lineHeight: 1.5 }}>
+                                {item.reason}
+                              </p>
+                            )}
+                            {(item.userValue || item.announcementCondition) && (
+                              <div style={{ marginTop: 6, paddingLeft: 30, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                                {item.userValue && (
+                                  <span style={{ fontSize: 11, color: '#6a6a6a', background: '#f2f2f2', padding: '2px 8px', borderRadius: 6 }}>
+                                    내 정보: {item.userValue}
+                                  </span>
+                                )}
+                                {item.announcementCondition && (
+                                  <span style={{ fontSize: 11, color: '#6a6a6a', background: '#f2f2f2', padding: '2px 8px', borderRadius: 6 }}>
+                                    공고 조건: {item.announcementCondition}
+                                  </span>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                          {item.actionLabel && item.actionTarget === 'OFFICIAL_NOTICE' && (
+                            <a href="#" style={{
+                              fontSize: 12, fontWeight: 700, color: '#ff385c', background: '#fff0f3',
+                              padding: '5px 10px', borderRadius: 8, textDecoration: 'none', flexShrink: 0,
+                              border: '1px solid #ffd0d9',
+                            }}>
+                              {item.actionLabel}
+                            </a>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {checklist.disclaimer && (
+        <p style={{ fontSize: 12, color: '#9ca3af', marginTop: 14, lineHeight: 1.6, padding: '0 4px' }}>
+          * {checklist.disclaimer}
+        </p>
+      )}
+    </div>
+  );
+};
+
 const LocationInfoSection = ({ sectionTitleStyle, announcementName, announcementAddress, units }) => {
   const normalizedUnits = (Array.isArray(units) ? units : []).map(normalizeLocationUnit);
   const representativeUnit = normalizedUnits.find((unit) =>
@@ -816,6 +994,8 @@ export default function AnnouncementDetailPage() {
   const [marketErrorsByUnit, setMarketErrorsByUnit] = useState({});
   const [marketRequestVersion, setMarketRequestVersion] = useState(0);
   const marketDealRange = getMarketDealYmRange();
+  const [checklist, setChecklist] = useState(null);
+  const [checklistLoading, setChecklistLoading] = useState(false);
 
   useEffect(() => {
     const load = async () => {
@@ -832,6 +1012,12 @@ export default function AnnouncementDetailPage() {
             const f = await favRes.json();
             setFavorited(f.exists || f === true);
           }
+          setChecklistLoading(true);
+          try {
+            const clRes = await api.get(`/api/announcements/${id}/eligibility-checklist`);
+            if (clRes.ok) setChecklist(await clRes.json());
+          } catch { /* handled */ }
+          setChecklistLoading(false);
         }
       } catch { /* handled */ }
       setLoading(false);
@@ -1031,6 +1217,19 @@ export default function AnnouncementDetailPage() {
             </div>
           </div>
 
+          {/* 내 조건 충족도 체크리스트 */}
+          {!isLoggedIn ? (
+            <div style={{ padding: '14px 18px', borderRadius: 14, background: '#f9fafb', border: '1px solid #e5e7eb', marginBottom: 32, textAlign: 'center' }}>
+              <p style={{ fontSize: 14, color: '#6a6a6a' }}>로그인하면 내 신청 조건을 확인할 수 있습니다</p>
+            </div>
+          ) : checklistLoading ? (
+            <div style={{ borderRadius: 14, background: '#f9fafb', marginBottom: 32, height: 100,
+              backgroundImage: 'linear-gradient(90deg, #f0f0f0 0%, #fafafa 50%, #f0f0f0 100%)',
+            }} />
+          ) : checklist ? (
+            <EligibilityChecklist checklist={checklist} />
+          ) : null}
+
           {/* Basic Info */}
           <div style={{ marginBottom: 40 }}>
             <h2 style={S.sectionTitle}>기본 정보</h2>
@@ -1198,6 +1397,21 @@ export default function AnnouncementDetailPage() {
               </svg>
               {favorited ? '저장됨' : '공고 저장하기'}
             </button>
+
+            {/* 체크리스트 요약 (sticky card) */}
+            {checklist && (
+              <div style={{ padding: '12px 0', borderBottom: '1px solid rgba(0,0,0,0.08)', marginBottom: 16 }}>
+                <p style={{ fontSize: 12, color: '#6a6a6a', marginBottom: 6 }}>내 조건 체크</p>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 6 }}>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: '#22C55E' }}>충족 {checklist.metCount}개</span>
+                  {checklist.notMetCount > 0 && <span style={{ fontSize: 12, fontWeight: 700, color: '#EF4444' }}>미충족 {checklist.notMetCount}개</span>}
+                  {checklist.needsVerificationCount > 0 && <span style={{ fontSize: 12, fontWeight: 700, color: '#F97316' }}>확인 필요 {checklist.needsVerificationCount}개</span>}
+                </div>
+                <p style={{ fontSize: 12, fontWeight: 600, color: SUMMARY_STATUS_COLOR[checklist.summaryStatus] || '#6a6a6a' }}>
+                  {checklist.summaryMessage}
+                </p>
+              </div>
+            )}
 
             <div style={{ borderTop: '1px solid rgba(0,0,0,0.08)', paddingTop: 20 }}>
               {[
