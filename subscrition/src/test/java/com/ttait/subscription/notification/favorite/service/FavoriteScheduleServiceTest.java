@@ -1,17 +1,24 @@
 package com.ttait.subscription.notification.favorite.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 
 import com.ttait.subscription.announcement.domain.Announcement;
 import com.ttait.subscription.announcement.domain.AnnouncementStatus;
+import com.ttait.subscription.announcement.domain.SourceType;
 import com.ttait.subscription.notification.favorite.domain.UserFavoriteAnnouncement;
 import com.ttait.subscription.notification.favorite.dto.FavoriteCalendarEventResponse;
 import com.ttait.subscription.notification.favorite.dto.FavoriteScheduleGroupResponse;
 import com.ttait.subscription.notification.favorite.dto.FavoriteScheduleResponse;
 import com.ttait.subscription.notification.favorite.dto.FavoriteScheduleStatus;
 import com.ttait.subscription.notification.favorite.repository.UserFavoriteAnnouncementRepository;
+import java.time.Clock;
+import java.time.Instant;
 import java.time.LocalDate;
+import java.time.ZoneId;
+import java.util.ArrayList;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -19,6 +26,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 
 @ExtendWith(MockitoExtension.class)
 class FavoriteScheduleServiceTest {
@@ -36,12 +45,16 @@ class FavoriteScheduleServiceTest {
     @Test
     @DisplayName("즐겨찾기가 없으면 빈 일정 응답을 반환한다")
     void getSchedule_whenNoFavorites_returnsEmptySchedule() {
-        given(favoriteRepository.findVisibleByUserIdWithAnnouncement(org.mockito.ArgumentMatchers.eq(1L), org.mockito.ArgumentMatchers.any()))
-            .willReturn(List.of());
+        LocalDate today = LocalDate.of(2026, 6, 11);
+        given(favoriteRepository.findSchedulePageByUserIdWithAnnouncement(
+            eq(1L), any(), eq(today), eq(today.plusDays(1)), eq(today.plusDays(7)), any()))
+            .willReturn(schedulePage(List.of(), 0));
 
-        FavoriteScheduleResponse result = favoriteScheduleService.getSchedule(1L, LocalDate.of(2026, 6, 11));
+        FavoriteScheduleResponse result = favoriteScheduleService.getSchedule(1L, today);
 
         assertThat(result.summary().totalCount()).isZero();
+        assertThat(result.summary().returnedCount()).isZero();
+        assertThat(result.summary().truncated()).isFalse();
         assertThat(result.groups())
             .extracting(FavoriteScheduleGroupResponse::key)
             .containsExactly("DUE_TODAY", "DUE_TOMORROW", "DUE_SOON", "OPEN", "UPCOMING", "DATE_UNKNOWN", "CLOSED");
@@ -62,12 +75,15 @@ class FavoriteScheduleServiceTest {
             favorite(6L, "일정 미정", null, today.plusDays(4), today.minusDays(5)),
             favorite(7L, "마감됨", today.minusDays(9), today.minusDays(1), today.minusDays(4))
         );
-        given(favoriteRepository.findVisibleByUserIdWithAnnouncement(org.mockito.ArgumentMatchers.eq(1L), org.mockito.ArgumentMatchers.any()))
-            .willReturn(favorites);
+        given(favoriteRepository.findSchedulePageByUserIdWithAnnouncement(
+            eq(1L), any(), eq(today), eq(today.plusDays(1)), eq(today.plusDays(7)), any()))
+            .willReturn(schedulePage(favorites, 7));
 
         FavoriteScheduleResponse result = favoriteScheduleService.getSchedule(1L, today);
 
         assertThat(result.summary().totalCount()).isEqualTo(7);
+        assertThat(result.summary().returnedCount()).isEqualTo(7);
+        assertThat(result.summary().truncated()).isFalse();
         assertThat(result.summary().dueTodayCount()).isEqualTo(1);
         assertThat(result.summary().dueTomorrowCount()).isEqualTo(1);
         assertThat(result.summary().dueSoonCount()).isEqualTo(3);
@@ -96,13 +112,13 @@ class FavoriteScheduleServiceTest {
             "서울 청년 매입임대주택 입주자 모집",
             today.minusDays(1),
             today.plusDays(3),
-            today.minusDays(10)
+            today.minusDays(10),
+            LocalDate.of(2026, 6, 1),
+            LocalDate.of(2026, 7, 10)
         );
-        Announcement announcement = favorite.getAnnouncement();
-        given(announcement.getAnnouncementDate()).willReturn(LocalDate.of(2026, 6, 1));
-        given(announcement.getWinnerAnnouncementDate()).willReturn(LocalDate.of(2026, 7, 10));
-        given(favoriteRepository.findVisibleByUserIdWithAnnouncement(org.mockito.ArgumentMatchers.eq(1L), org.mockito.ArgumentMatchers.any()))
-            .willReturn(List.of(favorite));
+        given(favoriteRepository.findSchedulePageByUserIdWithAnnouncement(
+            eq(1L), any(), eq(today), eq(today.plusDays(1)), eq(today.plusDays(7)), any()))
+            .willReturn(schedulePage(List.of(favorite), 1));
 
         FavoriteScheduleResponse result = favoriteScheduleService.getSchedule(1L, today);
 
@@ -120,24 +136,143 @@ class FavoriteScheduleServiceTest {
             );
     }
 
+    @Test
+    @DisplayName("기준일은 Asia/Seoul Clock으로 계산한다")
+    void getSchedule_usesAsiaSeoulClockForToday() {
+        Clock clock = Clock.fixed(Instant.parse("2026-06-10T15:30:00Z"), ZoneId.of("Asia/Seoul"));
+        favoriteScheduleService = new FavoriteScheduleService(favoriteRepository, clock);
+        UserFavoriteAnnouncement favorite = favorite(
+            21L,
+            "서울 기준 오늘 마감",
+            LocalDate.of(2026, 6, 1),
+            LocalDate.of(2026, 6, 11),
+            LocalDate.of(2026, 6, 1)
+        );
+        LocalDate today = LocalDate.of(2026, 6, 11);
+        given(favoriteRepository.findSchedulePageByUserIdWithAnnouncement(
+            eq(1L), any(), eq(today), eq(today.plusDays(1)), eq(today.plusDays(7)), any()))
+            .willReturn(schedulePage(List.of(favorite), 1));
+
+        FavoriteScheduleResponse result = favoriteScheduleService.getSchedule(1L);
+
+        assertThat(result.summary().dueTodayCount()).isEqualTo(1);
+        assertThat(result.groups().get(0).items().get(0).scheduleStatus()).isEqualTo(FavoriteScheduleStatus.DUE_TODAY);
+        assertThat(result.groups().get(0).items().get(0).dDayLabel()).isEqualTo("D-day");
+    }
+
+    @Test
+    @DisplayName("표시 필드가 null 또는 blank여도 fallback 값으로 일정 응답을 만든다")
+    void getSchedule_whenDisplayFieldsAreNullOrBlank_usesFallbacks() {
+        LocalDate today = LocalDate.of(2026, 6, 11);
+        UserFavoriteAnnouncement favorite = favorite(
+            31L,
+            " ",
+            null,
+            null,
+            today.minusDays(1),
+            today.plusDays(2),
+            today.minusDays(4),
+            today.minusDays(3),
+            null
+        );
+        given(favoriteRepository.findSchedulePageByUserIdWithAnnouncement(
+            eq(1L), any(), eq(today), eq(today.plusDays(1)), eq(today.plusDays(7)), any()))
+            .willReturn(schedulePage(List.of(favorite), 1));
+
+        FavoriteScheduleResponse result = favoriteScheduleService.getSchedule(1L, today);
+
+        assertThat(result.groups().get(2).items().get(0).noticeName()).isEqualTo("공고명 미확인");
+        assertThat(result.groups().get(2).items().get(0).providerName()).isEqualTo("기관 미확인");
+        assertThat(result.groups().get(2).items().get(0).noticeStatus()).isEqualTo("UNKNOWN");
+        assertThat(result.calendarEvents().get(0).title()).isEqualTo("공고일: 공고명 미확인");
+    }
+
+    @Test
+    @DisplayName("즐겨찾기 일정 응답은 최대 200개로 제한하고 summary에 절단 여부를 표시한다")
+    void getSchedule_whenFavoritesExceedLimit_capsItemsAndExposesSummary() {
+        LocalDate today = LocalDate.of(2026, 6, 11);
+        List<UserFavoriteAnnouncement> favorites = new ArrayList<>();
+        for (long id = 1; id <= 200; id++) {
+            favorites.add(favorite(id, "오늘 마감 " + id, today.minusDays(1), today, today.minusDays(2)));
+        }
+        given(favoriteRepository.findSchedulePageByUserIdWithAnnouncement(
+            eq(1L), any(), eq(today), eq(today.plusDays(1)), eq(today.plusDays(7)), any()))
+            .willReturn(schedulePage(favorites, 201));
+
+        FavoriteScheduleResponse result = favoriteScheduleService.getSchedule(1L, today);
+
+        assertThat(result.summary().totalCount()).isEqualTo(201);
+        assertThat(result.summary().returnedCount()).isEqualTo(200);
+        assertThat(result.summary().truncated()).isTrue();
+        assertThat(result.summary().dueTodayCount()).isEqualTo(200);
+        assertThat(result.groups().stream().mapToInt(group -> group.items().size()).sum()).isEqualTo(200);
+    }
+
+    private PageImpl<UserFavoriteAnnouncement> schedulePage(List<UserFavoriteAnnouncement> favorites, long total) {
+        return new PageImpl<>(favorites, PageRequest.of(0, 200), total);
+    }
+
     private UserFavoriteAnnouncement favorite(Long id,
                                               String noticeName,
                                               LocalDate applicationStartDate,
                                               LocalDate applicationEndDate,
                                               LocalDate favoritedDate) {
-        Announcement announcement = org.mockito.Mockito.mock(Announcement.class);
-        given(announcement.getId()).willReturn(id);
-        given(announcement.getNoticeName()).willReturn(noticeName);
-        given(announcement.getProviderName()).willReturn("LH");
-        given(announcement.getNoticeStatus()).willReturn(AnnouncementStatus.OPEN);
-        given(announcement.getApplicationStartDate()).willReturn(applicationStartDate);
-        given(announcement.getApplicationEndDate()).willReturn(applicationEndDate);
-        given(announcement.getAnnouncementDate()).willReturn(null);
-        given(announcement.getWinnerAnnouncementDate()).willReturn(null);
+        return favorite(id, noticeName, "LH", AnnouncementStatus.OPEN, applicationStartDate, applicationEndDate,
+            favoritedDate, null, null);
+    }
 
-        UserFavoriteAnnouncement favorite = org.mockito.Mockito.mock(UserFavoriteAnnouncement.class);
-        given(favorite.getAnnouncement()).willReturn(announcement);
-        given(favorite.getCreatedAt()).willReturn(favoritedDate.atStartOfDay());
-        return favorite;
+    private UserFavoriteAnnouncement favorite(Long id,
+                                              String noticeName,
+                                              LocalDate applicationStartDate,
+                                              LocalDate applicationEndDate,
+                                              LocalDate favoritedDate,
+                                              LocalDate announcementDate,
+                                              LocalDate winnerAnnouncementDate) {
+        return favorite(id, noticeName, "LH", AnnouncementStatus.OPEN, applicationStartDate, applicationEndDate,
+            favoritedDate, announcementDate, winnerAnnouncementDate);
+    }
+
+    private UserFavoriteAnnouncement favorite(Long id,
+                                              String noticeName,
+                                              String providerName,
+                                              AnnouncementStatus noticeStatus,
+                                              LocalDate applicationStartDate,
+                                              LocalDate applicationEndDate,
+                                              LocalDate favoritedDate,
+                                              LocalDate announcementDate,
+                                              LocalDate winnerAnnouncementDate) {
+        Announcement announcement = new Announcement(
+            SourceType.LH,
+            "notice-" + id,
+            noticeName,
+            providerName,
+            "https://example.com/notice-" + id,
+            null,
+            null,
+            null,
+            noticeStatus,
+            announcementDate,
+            applicationStartDate,
+            applicationEndDate,
+            winnerAnnouncementDate,
+            "서울특별시",
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            "match-" + id,
+            false,
+            null,
+            favoritedDate.atStartOfDay()
+        );
+        return new UserFavoriteAnnouncement(1L, announcement);
     }
 }

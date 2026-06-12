@@ -10,7 +10,9 @@ import com.ttait.subscription.notification.favorite.dto.FavoriteScheduleResponse
 import com.ttait.subscription.notification.favorite.dto.FavoriteScheduleStatus;
 import com.ttait.subscription.notification.favorite.dto.FavoriteScheduleSummaryResponse;
 import com.ttait.subscription.notification.favorite.repository.UserFavoriteAnnouncementRepository;
+import java.time.Clock;
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -18,12 +20,18 @@ import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @Transactional(readOnly = true)
 public class FavoriteScheduleService {
+
+    private static final ZoneId SEOUL_ZONE = ZoneId.of("Asia/Seoul");
+    private static final int MAX_SCHEDULE_ITEMS = 200;
 
     private static final String DISCLAIMER =
         "일정은 서비스에 저장된 공고 데이터를 기준으로 표시됩니다. 최종 신청 기간과 발표 일정은 공고 원문과 신청 사이트에서 반드시 확인해야 합니다.";
@@ -39,23 +47,37 @@ public class FavoriteScheduleService {
     );
 
     private final UserFavoriteAnnouncementRepository favoriteRepository;
+    private final Clock clock;
 
+    @Autowired
     public FavoriteScheduleService(UserFavoriteAnnouncementRepository favoriteRepository) {
+        this(favoriteRepository, Clock.system(SEOUL_ZONE));
+    }
+
+    FavoriteScheduleService(UserFavoriteAnnouncementRepository favoriteRepository, Clock clock) {
         this.favoriteRepository = favoriteRepository;
+        this.clock = clock;
     }
 
     public FavoriteScheduleResponse getSchedule(Long userId) {
-        return getSchedule(userId, LocalDate.now());
+        return getSchedule(userId, LocalDate.now(clock));
     }
 
     FavoriteScheduleResponse getSchedule(Long userId, LocalDate today) {
-        List<UserFavoriteAnnouncement> favorites = favoriteRepository.findVisibleByUserIdWithAnnouncement(
+        Page<UserFavoriteAnnouncement> favorites = favoriteRepository.findSchedulePageByUserIdWithAnnouncement(
             userId,
-            ParseReviewStatus.publicVisibleStatuses());
+            ParseReviewStatus.publicVisibleStatuses(),
+            today,
+            today.plusDays(1),
+            today.plusDays(7),
+            PageRequest.of(0, MAX_SCHEDULE_ITEMS));
 
-        List<FavoriteScheduleItemResponse> items = favorites.stream()
+        int totalCount = Math.toIntExact(favorites.getTotalElements());
+
+        List<FavoriteScheduleItemResponse> items = favorites.getContent().stream()
             .map(favorite -> toItem(favorite, today))
             .toList();
+        int returnedCount = items.size();
 
         Map<FavoriteScheduleStatus, List<FavoriteScheduleItemResponse>> grouped = new EnumMap<>(FavoriteScheduleStatus.class);
         for (FavoriteScheduleStatus status : GROUP_ORDER) {
@@ -76,7 +98,9 @@ public class FavoriteScheduleService {
             .toList();
 
         FavoriteScheduleSummaryResponse summary = new FavoriteScheduleSummaryResponse(
-            items.size(),
+            totalCount,
+            returnedCount,
+            totalCount > returnedCount,
             count(items, FavoriteScheduleStatus.DUE_TODAY),
             count(items, FavoriteScheduleStatus.DUE_TOMORROW),
             countDueWithinSevenDays(items),
@@ -98,9 +122,9 @@ public class FavoriteScheduleService {
 
         return new FavoriteScheduleItemResponse(
             announcement.getId(),
-            announcement.getNoticeName(),
-            announcement.getProviderName(),
-            announcement.getNoticeStatus().name(),
+            displayText(announcement.getNoticeName(), "공고명 미확인"),
+            displayText(announcement.getProviderName(), "기관 미확인"),
+            announcement.getNoticeStatus() == null ? "UNKNOWN" : announcement.getNoticeStatus().name(),
             announcement.getApplicationStartDate(),
             announcement.getApplicationEndDate(),
             announcement.getAnnouncementDate(),
@@ -112,6 +136,10 @@ public class FavoriteScheduleService {
             statusMessage(scheduleStatus, announcement),
             "공고 확인"
         );
+    }
+
+    private String displayText(String value, String fallback) {
+        return value == null || value.isBlank() ? fallback : value;
     }
 
     private FavoriteScheduleStatus resolveStatus(Announcement announcement, LocalDate today) {
