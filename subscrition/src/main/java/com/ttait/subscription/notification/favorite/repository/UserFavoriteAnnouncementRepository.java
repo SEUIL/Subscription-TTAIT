@@ -52,6 +52,22 @@ public interface UserFavoriteAnnouncementRepository extends JpaRepository<UserFa
             WHERE f.userId = :userId
               AND a.deleted = false
               AND a.merged = false
+              AND EXISTS (
+                  SELECT e.id FROM AnnouncementEligibility e
+                  WHERE e.announcement = a
+                    AND e.reviewStatus IN :reviewStatuses
+              )
+            """)
+    List<UserFavoriteAnnouncement> findVisibleByUserIdWithAnnouncement(
+            @Param("userId") Long userId,
+            @Param("reviewStatuses") Collection<ParseReviewStatus> reviewStatuses);
+
+    @Query("""
+            SELECT f FROM UserFavoriteAnnouncement f
+            JOIN FETCH f.announcement a
+            WHERE f.userId = :userId
+              AND a.deleted = false
+              AND a.merged = false
               AND a.applicationEndDate IS NOT NULL
               AND EXISTS (
                   SELECT e.id FROM AnnouncementEligibility e

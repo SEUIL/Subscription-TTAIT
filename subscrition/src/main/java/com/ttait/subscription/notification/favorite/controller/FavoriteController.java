@@ -3,6 +3,8 @@ package com.ttait.subscription.notification.favorite.controller;
 import com.ttait.subscription.common.util.CurrentUser;
 import com.ttait.subscription.notification.favorite.dto.FavoriteCreateRequest;
 import com.ttait.subscription.notification.favorite.dto.FavoriteResponse;
+import com.ttait.subscription.notification.favorite.dto.FavoriteScheduleResponse;
+import com.ttait.subscription.notification.favorite.service.FavoriteScheduleService;
 import com.ttait.subscription.notification.favorite.service.FavoriteService;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
@@ -23,9 +25,12 @@ import org.springframework.web.bind.annotation.RestController;
 public class FavoriteController {
 
     private final FavoriteService favoriteService;
+    private final FavoriteScheduleService favoriteScheduleService;
 
-    public FavoriteController(FavoriteService favoriteService) {
+    public FavoriteController(FavoriteService favoriteService,
+                              FavoriteScheduleService favoriteScheduleService) {
         this.favoriteService = favoriteService;
+        this.favoriteScheduleService = favoriteScheduleService;
     }
 
     @PostMapping
@@ -44,6 +49,11 @@ public class FavoriteController {
     public ResponseEntity<Page<FavoriteResponse>> list(
         @PageableDefault(size = 20) Pageable pageable) {
         return ResponseEntity.ok(favoriteService.list(CurrentUser.id(), pageable));
+    }
+
+    @GetMapping("/schedule")
+    public ResponseEntity<FavoriteScheduleResponse> schedule() {
+        return ResponseEntity.ok(favoriteScheduleService.getSchedule(CurrentUser.id()));
     }
 
     @GetMapping("/{announcementId}/exists")

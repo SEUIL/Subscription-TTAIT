@@ -15,6 +15,7 @@ Desktop.ini
 .env.*
 !.env.example
 !.env.sample
+subscrition/src/main/resources/application-local.properties
 
 # Java / Gradle build outputs
 **/.gradle/
