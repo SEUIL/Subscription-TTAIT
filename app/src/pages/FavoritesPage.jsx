@@ -220,8 +220,60 @@ function CalendarView({ schedule, loading }) {
     setOpenDates(prev => ({ ...prev, [date]: !prev[date] }));
   };
 
+  // announcementId → scheduleStatus 조인 맵
+  const announcementStatusMap = useMemo(() => {
+    const map = {};
+    (schedule?.groups || []).forEach(group => {
+      (group.items || []).forEach(item => {
+        map[item.announcementId] = item.scheduleStatus;
+      });
+    });
+    return map;
+  }, [schedule]);
+
+  // eventType + scheduleStatus 복합 색상 결정
+  const getEffectiveEventMeta = (event) => {
+    const status = announcementStatusMap[event.announcementId];
+    if (event.eventType === 'APPLICATION_END') {
+      const urgentStatuses = ['DUE_TODAY', 'DUE_TOMORROW', 'DUE_SOON'];
+      if (urgentStatuses.includes(status)) {
+        const sm = STATUS_META[status];
+        return { label: '신청 마감', color: sm.color, bg: sm.bg };
+      }
+      return { label: '신청 마감', color: '#EF4444', bg: '#FEF2F2' };
+    }
+    if (event.eventType === 'APPLICATION_START') return { label: '신청 시작', color: '#16A34A', bg: '#F0FDF4' };
+    if (event.eventType === 'WINNER_ANNOUNCEMENT') return { label: '당첨 발표', color: '#7C3AED', bg: '#F5F3FF' };
+    return getEventMeta(event.eventType);
+  };
+
+  // 해당 날짜 이벤트들 중 가장 높은 긴급도의 셀 배경색
+  const getCellUrgencyBg = (dayEvents) => {
+    for (const urgency of ['DUE_TODAY', 'DUE_TOMORROW', 'DUE_SOON']) {
+      if (dayEvents.some(ev => announcementStatusMap[ev.announcementId] === urgency && ev.eventType === 'APPLICATION_END')) {
+        return STATUS_META[urgency].bg;
+      }
+    }
+    return null;
+  };
+
+  // 셀 클릭: 1개면 새탭, 2개 이상이면 아코디언 포커스
+  const handleCellClick = (dateKey, dayEvents) => {
+    if (dayEvents.length === 0) return;
+    if (dayEvents.length === 1) {
+      window.open(`/announcements/${dayEvents[0].announcementId}`, '_blank');
+    } else {
+      setOpenDates(prev => ({ ...prev, [dateKey]: true }));
+      setTimeout(() => {
+        const el = document.getElementById(`accordion-${dateKey}`);
+        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 50);
+    }
+  };
+
   const events = (Array.isArray(schedule?.calendarEvents) ? schedule.calendarEvents : [])
     .filter(ev => ev.eventType !== 'ANNOUNCEMENT_DATE');
+
   const eventsByDate = useMemo(() => {
     return events.reduce((acc, event) => {
       const key = toDateKey(event.date);
@@ -268,7 +320,7 @@ function CalendarView({ schedule, loading }) {
       <div style={S.sectionHead}>
         <div>
           <h2 style={S.sectionTitle}>캘린더</h2>
-          <p style={S.sectionDesc}>공고일, 신청 시작, 신청 마감, 당첨 발표를 날짜별로 묶었습니다.</p>
+          <p style={S.sectionDesc}>신청 시작, 신청 마감, 당첨 발표를 날짜별로 묶었습니다.</p>
         </div>
         <div style={S.calendarNav}>
           <button style={S.iconBtn} aria-label="이전 달" onClick={() => setCurrentDate(new Date(year, month - 1, 1))}>
@@ -297,9 +349,18 @@ function CalendarView({ schedule, loading }) {
             const dayEvents = eventsByDate[dateKey] || [];
             const isToday = dateKey === todayStr;
             const dayOfWeek = (firstDay.getDay() + day - 1) % 7;
+            const urgencyBg = getCellUrgencyBg(dayEvents);
 
             return (
-              <div key={dateKey} style={S.calendarCell(isToday)}>
+              <div
+                key={dateKey}
+                style={{
+                  ...S.calendarCell(isToday),
+                  background: urgencyBg || (isToday ? '#fff0f3' : '#fff'),
+                  cursor: dayEvents.length > 0 ? 'pointer' : 'default',
+                }}
+                onClick={() => handleCellClick(dateKey, dayEvents)}
+              >
                 <div style={{
                   ...S.dayNumber,
                   color: isToday ? '#ff385c' : dayOfWeek === 0 ? '#EF4444' : dayOfWeek === 6 ? '#2563EB' : '#222',
@@ -309,9 +370,17 @@ function CalendarView({ schedule, loading }) {
                 </div>
                 <div style={S.eventPillStack}>
                   {dayEvents.slice(0, 3).map((event, eventIndex) => {
-                    const meta = getEventMeta(event.eventType);
+                    const meta = getEffectiveEventMeta(event);
                     return (
-                      <div key={`${event.eventType}-${eventIndex}`} style={S.eventPill(meta, event.priority === 'HIGH')} title={event.title}>
+                      <div
+                        key={`${event.eventType}-${eventIndex}`}
+                        style={{ ...S.eventPill(meta, event.priority === 'HIGH'), cursor: 'pointer' }}
+                        title={event.title}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          window.open(`/announcements/${event.announcementId}`, '_blank');
+                        }}
+                      >
                         <span>{meta.label}</span>
                         <strong>{event.title}</strong>
                       </div>
@@ -330,7 +399,7 @@ function CalendarView({ schedule, loading }) {
           const isOpen = !!openDates[date];
           const hasHigh = dateEvents.some(e => e.priority === 'HIGH');
           return (
-            <div key={date} style={S.accordionItem}>
+            <div key={date} id={`accordion-${date}`} style={S.accordionItem}>
               <button
                 type="button"
                 style={S.accordionHeader(isOpen)}
@@ -352,9 +421,13 @@ function CalendarView({ schedule, loading }) {
               {isOpen && (
                 <div style={S.accordionBody}>
                   {dateEvents.map((event, index) => {
-                    const meta = getEventMeta(event.eventType);
+                    const meta = getEffectiveEventMeta(event);
                     return (
-                      <div key={`${date}-${event.eventType}-${index}`} style={S.eventItem(event.priority === 'HIGH')}>
+                      <div
+                        key={`${date}-${event.eventType}-${index}`}
+                        style={{ ...S.eventItem(event.priority === 'HIGH'), cursor: 'pointer' }}
+                        onClick={() => window.open(`/announcements/${event.announcementId}`, '_blank')}
+                      >
                         <span style={S.eventType(meta)}>{meta.label}</span>
                         <span style={S.eventTitle}>{event.title}</span>
                         {event.priority === 'HIGH' && <span style={S.highBadge}>중요</span>}
