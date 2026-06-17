@@ -12,7 +12,7 @@ import org.springframework.web.client.RestClient;
 public class RtmsConfig {
 
     private static final Duration CONNECT_TIMEOUT = Duration.ofSeconds(3);
-    private static final Duration READ_TIMEOUT = Duration.ofSeconds(10);
+    private static final Duration READ_TIMEOUT = Duration.ofSeconds(30);
 
     @Bean
     public RestClient rtmsRestClient(RestClient.Builder builder) {

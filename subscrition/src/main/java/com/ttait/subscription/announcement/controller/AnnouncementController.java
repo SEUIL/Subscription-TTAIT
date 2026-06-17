@@ -3,11 +3,13 @@ package com.ttait.subscription.announcement.controller;
 import com.ttait.subscription.announcement.dto.AnnouncementDetailResponse;
 import com.ttait.subscription.announcement.dto.AnnouncementListItemResponse;
 import com.ttait.subscription.announcement.service.AnnouncementQueryService;
+import com.ttait.subscription.auth.domain.AuthenticatedUser;
 import com.ttait.subscription.user.domain.enums.CategoryCode;
 import java.util.List;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -40,8 +42,13 @@ public class AnnouncementController {
             @RequestParam(required = false) List<CategoryCode> categories,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
-            @RequestParam(required = false) String sort
+            @RequestParam(required = false) String sort,
+            Authentication authentication
     ) {
+        Long userId = null;
+        if (authentication != null && authentication.getPrincipal() instanceof AuthenticatedUser principal) {
+            userId = principal.userId();
+        }
         return announcementQueryService.getAnnouncements(
                 regionLevel1,
                 regionLevel2,
@@ -55,7 +62,8 @@ public class AnnouncementController {
                 minMonthlyRent,
                 maxMonthlyRent,
                 categories,
-                PageRequest.of(page, size, resolveSort(sort))
+                PageRequest.of(page, size, resolveSort(sort)),
+                userId
         );
     }
 

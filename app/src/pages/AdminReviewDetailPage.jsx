@@ -435,7 +435,7 @@ export default function AdminReviewDetailPage() {
       const res = await api.post(`/api/admin/review/${id}`, body);
       if (res.ok) {
         toast('검수 처리가 완료되었습니다');
-        navigate('/admin/review');
+        navigate('/admin/review?status=PENDING');
       } else {
         toast('검수 처리에 실패했습니다', 'error');
       }

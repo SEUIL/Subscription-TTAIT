@@ -16,6 +16,7 @@ public record AnnouncementListItemResponse(
         Long monthlyRentAmount,
         LocalDate applicationStartDate,
         LocalDate applicationEndDate,
-        String noticeStatus
+        String noticeStatus,
+        boolean favorited
 ) {
 }

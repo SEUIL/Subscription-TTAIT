@@ -6,6 +6,7 @@ import java.time.LocalDate;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -17,6 +18,11 @@ public interface UserFavoriteAnnouncementRepository extends JpaRepository<UserFa
     Optional<UserFavoriteAnnouncement> findByUserIdAndAnnouncementId(Long userId, Long announcementId);
 
     boolean existsByUserIdAndAnnouncementId(Long userId, Long announcementId);
+
+    @Query("SELECT f.announcement.id FROM UserFavoriteAnnouncement f WHERE f.userId = :userId AND f.announcement.id IN :announcementIds")
+    Set<Long> findAnnouncementIdsByUserIdAndAnnouncementIdIn(
+            @Param("userId") Long userId,
+            @Param("announcementIds") Collection<Long> announcementIds);
 
     @Query(value = """
             SELECT f FROM UserFavoriteAnnouncement f

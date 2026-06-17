@@ -6,6 +6,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 import org.springframework.web.client.RestClient;
+import org.springframework.web.client.RestClientException;
+import org.springframework.web.client.RestClientResponseException;
 
 @Component
 public class RtmsClient {
@@ -28,20 +30,26 @@ public class RtmsClient {
         validateConfig();
         validateRequest(lawdCd, dealYm, pageNo, numOfRows);
 
-        String response = restClient.get()
-                .uri(uriBuilder -> uriBuilder
-                        .scheme("https")
-                        .host(HOST)
-                        .path(sourceType.path())
-                        .queryParam("serviceKey", properties.serviceKey())
-                        .queryParam("LAWD_CD", lawdCd)
-                        .queryParam("DEAL_YMD", dealYm)
-                        .queryParam("pageNo", pageNo)
-                        .queryParam("numOfRows", numOfRows)
-                        .build())
-                .retrieve()
-                .body(String.class);
-        return responseAdapter.adapt(response, sourceType, lawdCd, dealYm);
+        try {
+            String response = restClient.get()
+                    .uri(uriBuilder -> uriBuilder
+                            .scheme("https")
+                            .host(HOST)
+                            .path(sourceType.path())
+                            .queryParam("serviceKey", properties.serviceKey())
+                            .queryParam("LAWD_CD", lawdCd)
+                            .queryParam("DEAL_YMD", dealYm)
+                            .queryParam("pageNo", pageNo)
+                            .queryParam("numOfRows", numOfRows)
+                            .build())
+                    .retrieve()
+                    .body(String.class);
+            return responseAdapter.adapt(response, sourceType, lawdCd, dealYm);
+        } catch (RestClientResponseException e) {
+            return RtmsApiResult.failed("RTMS API HTTP error: " + e.getStatusCode());
+        } catch (RestClientException e) {
+            return RtmsApiResult.failed("RTMS API connection error: " + e.getMessage());
+        }
     }
 
     private void validateConfig() {

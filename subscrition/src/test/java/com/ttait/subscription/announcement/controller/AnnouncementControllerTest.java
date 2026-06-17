@@ -24,6 +24,7 @@ import com.ttait.subscription.external.naver.NaverGeocodingClient;
 import com.ttait.subscription.external.naver.NaverGeocodingResult;
 import com.ttait.subscription.external.service.AnnouncementUnitGeocodingEnrichmentService;
 import com.ttait.subscription.external.support.AnnouncementNormalizer;
+import com.ttait.subscription.notification.favorite.repository.UserFavoriteAnnouncementRepository;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -60,6 +61,9 @@ class AnnouncementControllerTest {
     @Mock
     private NaverGeocodingClient naverGeocodingClient;
 
+    @Mock
+    private UserFavoriteAnnouncementRepository userFavoriteAnnouncementRepository;
+
     private MockMvc mockMvc;
 
     @BeforeEach
@@ -70,7 +74,8 @@ class AnnouncementControllerTest {
                 announcementCategoryRepository,
                 announcementUnitRepository,
                 new AnnouncementUnitGeocodingEnrichmentService(announcementUnitRepository, naverGeocodingClient),
-                new AnnouncementNormalizer());
+                new AnnouncementNormalizer(),
+                userFavoriteAnnouncementRepository);
         mockMvc = MockMvcBuilders.standaloneSetup(new AnnouncementController(queryService)).build();
     }
 

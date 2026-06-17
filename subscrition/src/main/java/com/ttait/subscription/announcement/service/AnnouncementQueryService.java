@@ -18,9 +18,12 @@ import com.ttait.subscription.announcement.repository.AnnouncementUnitRepository
 import com.ttait.subscription.common.exception.ApiException;
 import com.ttait.subscription.external.service.AnnouncementUnitGeocodingEnrichmentService;
 import com.ttait.subscription.external.support.AnnouncementNormalizer;
+import com.ttait.subscription.notification.favorite.repository.UserFavoriteAnnouncementRepository;
 import com.ttait.subscription.user.domain.enums.CategoryCode;
+import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
@@ -38,19 +41,22 @@ public class AnnouncementQueryService {
     private final AnnouncementUnitRepository announcementUnitRepository;
     private final AnnouncementUnitGeocodingEnrichmentService announcementUnitGeocodingEnrichmentService;
     private final AnnouncementNormalizer announcementNormalizer;
+    private final UserFavoriteAnnouncementRepository userFavoriteAnnouncementRepository;
 
     public AnnouncementQueryService(AnnouncementRepository announcementRepository,
                                       AnnouncementDetailRepository announcementDetailRepository,
                                       AnnouncementCategoryRepository announcementCategoryRepository,
                                       AnnouncementUnitRepository announcementUnitRepository,
                                       AnnouncementUnitGeocodingEnrichmentService announcementUnitGeocodingEnrichmentService,
-                                      AnnouncementNormalizer announcementNormalizer) {
+                                      AnnouncementNormalizer announcementNormalizer,
+                                      UserFavoriteAnnouncementRepository userFavoriteAnnouncementRepository) {
         this.announcementRepository = announcementRepository;
         this.announcementDetailRepository = announcementDetailRepository;
         this.announcementCategoryRepository = announcementCategoryRepository;
         this.announcementUnitRepository = announcementUnitRepository;
         this.announcementUnitGeocodingEnrichmentService = announcementUnitGeocodingEnrichmentService;
         this.announcementNormalizer = announcementNormalizer;
+        this.userFavoriteAnnouncementRepository = userFavoriteAnnouncementRepository;
     }
 
     public Page<AnnouncementListItemResponse> getAnnouncements(String regionLevel1,
@@ -65,7 +71,8 @@ public class AnnouncementQueryService {
                                                                Long minMonthlyRent,
                                                                Long maxMonthlyRent,
                                                                List<CategoryCode> categories,
-                                                               Pageable pageable) {
+                                                               Pageable pageable,
+                                                               Long userId) {
         AnnouncementStatus parsedStatus = parseStatus(status);
         AnnouncementSearchCondition condition = new AnnouncementSearchCondition(
                 regionLevel1,
@@ -83,8 +90,19 @@ public class AnnouncementQueryService {
                         ParseReviewStatus.publicVisibleStatuses()
         );
 
-        return announcementRepository.searchPublicVisible(condition, pageable)
-                .map(this::toListItem);
+        Page<Announcement> page = announcementRepository.searchPublicVisible(condition, pageable);
+
+        Set<Long> favoritedIds = Collections.emptySet();
+        if (userId != null) {
+            List<Long> announcementIds = page.getContent().stream().map(Announcement::getId).toList();
+            if (!announcementIds.isEmpty()) {
+                favoritedIds = userFavoriteAnnouncementRepository
+                        .findAnnouncementIdsByUserIdAndAnnouncementIdIn(userId, announcementIds);
+            }
+        }
+
+        final Set<Long> finalFavoritedIds = favoritedIds;
+        return page.map(a -> toListItem(a, finalFavoritedIds.contains(a.getId())));
     }
 
     @Transactional
@@ -160,7 +178,7 @@ public class AnnouncementQueryService {
         ));
     }
 
-    private AnnouncementListItemResponse toListItem(Announcement announcement) {
+    private AnnouncementListItemResponse toListItem(Announcement announcement, boolean favorited) {
         String resolvedRegionLevel2 = resolveRegionLevel2(announcement);
         String resolvedHouseType = resolveHouseType(announcement);
         return new AnnouncementListItemResponse(
@@ -177,7 +195,8 @@ public class AnnouncementQueryService {
                 announcement.getMonthlyRentAmount(),
                 announcement.getApplicationStartDate(),
                 announcement.getApplicationEndDate(),
-                announcement.getNoticeStatus().name()
+                announcement.getNoticeStatus().name(),
+                favorited
         );
     }
 
